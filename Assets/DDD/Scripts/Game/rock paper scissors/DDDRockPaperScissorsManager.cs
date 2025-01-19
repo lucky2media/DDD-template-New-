@@ -3,153 +3,168 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using DDD.Scripts.Core;
+using DDD.Scripts.Game.rock_paper_scissors;
 using UnityEngine;
-using Random = System.Random;
 
-
-namespace DDD.Scripts.Game.rock_paper_scissors
+namespace DDD.Scripts.Game.RockPaperScissors
 {
     public class DDDRockPaperScissorsManager : DDDMonoBehaviour
     {
-        [SerializeField] List<PlayerChoice> playerChoices = new List<PlayerChoice>();
-        [SerializeField] RockPaperScissorsState gameState;
-        [SerializeField]  List<PlayerChoice> botChoice = new List<PlayerChoice>();
-        [SerializeField] GameObject rockVis, paperVis, scissorsVis;
+        [SerializeField] private GameObject rockVisual;
+        [SerializeField] private GameObject paperVisual;
+        [SerializeField] private GameObject scissorsVisual;
+        [SerializeField] private EndOfGamePopup endOfGamePopup;
 
-        public void SelectItem(PlayerChoice choice, Action<RockPaperScissorsState> callback)
+        private GameState currentState;
+        private readonly List<Choice> playerChoices = new();
+        private List<Choice> botChoices = new();
+        private readonly System.Random random = new();
+
+        private void Start()
         {
-            Debug.Log(choice);
-            if (gameState == RockPaperScissorsState.PlayerPickFirst)
-            {
-                Debug.Log($"try to select {choice}");
-                if (playerChoices.Contains(choice)) return;
-                if (playerChoices.Count < 2)
-                {
-                    playerChoices.Add(choice);
-                    Debug.Log($" select {choice}");
-                    callback?.Invoke(gameState);
-                }
+            InitializeGame();
+        }
 
-                if (playerChoices.Count == 2)
-                {
-                    Debug.Log($" end first turn");
-                    ChangeState(RockPaperScissorsState.BotPickFirst);
-                    StartCoroutine(BotFirstMove());
-                }
-            }
+        private void InitializeGame()
+        {
+            currentState = GameState.PlayerPickFirst;
+            playerChoices.Clear();
+            botChoices.Clear();
+            HideAllVisuals();
+        }
 
-            if (gameState == RockPaperScissorsState.PlayerPickSecond)
+        public void HandlePlayerChoice(Choice choice, Action<GameState> callback)
+        {
+            if (!IsValidPlayerMove(choice)) return;
+
+            switch (currentState)
             {
-                Debug.Log(RockPaperScissorsState.BotPickFirst.ToString());
-                Debug.Log($"try to select {choice}");
-                if (playerChoices.Contains(choice))
-                {
-                    playerChoices.Remove(choice);
-                    callback?.Invoke(gameState);
-                    StartCoroutine(BotSecondMove());
-                }
+                case GameState.PlayerPickFirst:
+                    HandleFirstPlayerTurn(choice, callback);
+                    break;
+                case GameState.PlayerPickSecond:
+                    HandleSecondPlayerTurn(choice, callback);
+                    break;
             }
         }
 
-        private IEnumerator BotFirstMove()
+        private bool IsValidPlayerMove(Choice choice)
         {
-            botChoice = BotChoices();
-            yield return new WaitForSeconds(1);
-            for (int i = 0; i < botChoice.Count; i++)
+            if (currentState == GameState.PlayerPickFirst)
             {
-                switch (botChoice[i])
-                {
-                    case PlayerChoice.Rock:
-                        rockVis.SetActive(true);
-                        break;
-                    case PlayerChoice.Paper:
-                        paperVis.SetActive(true);
-                        break;
-                    case PlayerChoice.Scissors:
-                        scissorsVis.SetActive(true);
-                        break;
-                }
+                return !playerChoices.Contains(choice) && playerChoices.Count < 2;
+            }
+            
+            if (currentState == GameState.PlayerPickSecond)
+            {
+                return playerChoices.Contains(choice);
+            }
+
+            return false;
+        }
+
+        private void HandleFirstPlayerTurn(Choice choice, Action<GameState> callback)
+        {
+            playerChoices.Add(choice);
+            callback?.Invoke(currentState);
+
+            if (playerChoices.Count == 2)
+            {
+                TransitionToState(GameState.BotPickFirst);
+                StartCoroutine(ExecuteBotFirstTurn());
+            }
+        }
+
+        private void HandleSecondPlayerTurn(Choice choice, Action<GameState> callback)
+        {
+            playerChoices.Remove(choice);
+            callback?.Invoke(currentState);
+            StartCoroutine(ExecuteBotSecondTurn());
+        }
+
+        private IEnumerator ExecuteBotFirstTurn()
+        {
+            botChoices = GenerateBotChoices(2);
+            yield return new WaitForSeconds(1f);
+
+            foreach (var choice in botChoices)
+            {
+                ShowVisualForChoice(choice, true);
                 yield return new WaitForSeconds(1f);
             }
 
-            ChangeState(RockPaperScissorsState.PlayerPickSecond);
+            TransitionToState(GameState.PlayerPickSecond);
         }
 
-        public List<PlayerChoice> BotChoices()
+        private IEnumerator ExecuteBotSecondTurn()
         {
-            Random random = new Random();
-            var uniqueChoices = Enum.GetValues(typeof(PlayerChoice))
-                .Cast<PlayerChoice>()
-                .OrderBy(x => random.Next())
-                .Distinct()
-                .Take(2)
-                .ToList();
-            return uniqueChoices;
+            var selectedChoice = botChoices[random.Next(botChoices.Count)];
+            ShowVisualForChoice(selectedChoice, false);
+            botChoices.Remove(selectedChoice);
+            
+            yield return new WaitForSeconds(1f);
+            
+            bool playerWins = DetermineWinner(playerChoices[0], botChoices[0]);
+            endOfGamePopup.Show(playerWins);
+            TransitionToState(GameState.EndGame);
         }
-        public List<PlayerChoice> BotChoices(int amount)
+
+        private List<Choice> GenerateBotChoices(int amount)
         {
-            Random random = new Random();
-            var uniqueChoices = Enum.GetValues(typeof(PlayerChoice))
-                .Cast<PlayerChoice>()
-                .OrderBy(x => random.Next())
-                .Distinct()
+            return Enum.GetValues(typeof(Choice))
+                .Cast<Choice>()
+                .OrderBy(_ => random.Next())
                 .Take(amount)
                 .ToList();
-            return uniqueChoices;
         }
 
-        private IEnumerator BotSecondMove()
+        private void ShowVisualForChoice(Choice choice, bool show)
         {
-            var ran =  botChoice.GetRandom();
-            yield return new WaitForSeconds(1);
-            switch (ran)
+            GameObject visual = choice switch
             {
-                case PlayerChoice.Rock:
-                    rockVis.SetActive(false);
-                    break;
-                case PlayerChoice.Paper:
-                    paperVis.SetActive(false);
-                    break;
-                case PlayerChoice.Scissors:
-                    scissorsVis.SetActive(false);
-                    break;
-               
-            }
-            botChoice.Remove(ran);
+                Choice.Rock => rockVisual,
+                Choice.Paper => paperVisual,
+                Choice.Scissors => scissorsVisual,
+                _ => throw new ArgumentOutOfRangeException(nameof(choice))
+            };
             
-            yield return new WaitForSeconds(1);
-           var t= DetermineWinner(playerChoices.First(),botChoice.First());
-           Debug.Log(t);
+            visual.SetActive(show);
         }
 
-        void ChangeState(RockPaperScissorsState state)
+        private void HideAllVisuals()
         {
-            gameState = state;
+            rockVisual.SetActive(false);
+            paperVisual.SetActive(false);
+            scissorsVisual.SetActive(false);
         }
-        
-        private string DetermineWinner(PlayerChoice player1, PlayerChoice player2)
+
+        private static bool DetermineWinner(Choice player, Choice bot)
         {
-            if (player1 == player2)
-                return "It's a tie!";
+            if (player == bot) return false;
 
-            bool player1Wins = (player1 == PlayerChoice.Rock && player2 == PlayerChoice.Scissors) ||
-                               (player1 == PlayerChoice.Paper && player2 == PlayerChoice.Rock) ||
-                               (player1 == PlayerChoice.Scissors && player2 == PlayerChoice.Paper);
+            return (player, bot) switch
+            {
+                (Choice.Rock, Choice.Scissors) => true,
+                (Choice.Paper, Choice.Rock) => true,
+                (Choice.Scissors, Choice.Paper) => true,
+                _ => false
+            };
+        }
 
-            return player1Wins ? "Player 1 Wins!" : "Player 2 Wins!";
+        private void TransitionToState(GameState newState)
+        {
+            currentState = newState;
         }
     }
 
-    public enum PlayerChoice
+    public enum Choice
     {
         Rock,
         Paper,
         Scissors
     }
-    
-    
 
-    public enum RockPaperScissorsState
+    public enum GameState
     {
         PlayerPickFirst,
         BotPickFirst,

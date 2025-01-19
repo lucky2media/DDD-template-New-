@@ -1,4 +1,5 @@
 using DDD.Scripts.Core;
+using DDD.Scripts.Game.RockPaperScissors;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,7 +7,7 @@ namespace DDD.Scripts.Game.rock_paper_scissors
 {
     public class PlayerChoiceButton : DDDMonoBehaviour
     {
-        public PlayerChoice choice;
+        public Choice choice;
         public Button me;
         public DDDRockPaperScissorsManager manager;
         public GameObject vis;
@@ -15,13 +16,13 @@ namespace DDD.Scripts.Game.rock_paper_scissors
             me.onClick.RemoveAllListeners();
             me.onClick.AddListener((() =>
             {
-                manager.SelectItem(choice,((state) =>
+                manager.HandlePlayerChoice(choice,((state) =>
                 {
-                    if (state == RockPaperScissorsState.PlayerPickFirst)
+                    if (state == GameState.PlayerPickFirst)
                     {
                         vis.SetActive(true);     
                     }
-                    else if(state == RockPaperScissorsState.PlayerPickSecond)
+                    else if(state == GameState.PlayerPickSecond)
                     {
                         Deselect();
                     }
