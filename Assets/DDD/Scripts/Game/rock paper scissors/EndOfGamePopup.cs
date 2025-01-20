@@ -1,4 +1,5 @@
 using DDD.Scripts.Core;
+using DDD.Scripts.Game.RockPaperScissors;
 using DDD.Scripts.Lobby;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -13,7 +14,7 @@ namespace DDD.Scripts.Game.rock_paper_scissors
         [SerializeField] private Sprite winSprite;
         [SerializeField] private Sprite loseSprite;
         [SerializeField] private Button playAgain;
-
+        [SerializeField] private DDDRockPaperScissorsManager manager;
         public void Show(bool win)
         {
             screen.SetActive(true);
@@ -29,7 +30,8 @@ namespace DDD.Scripts.Game.rock_paper_scissors
             playAgain.onClick.RemoveAllListeners();
             playAgain.onClick.AddListener((() =>
             {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+               manager.ResetGame();
+               screen.SetActive(false);
             }));
         }
     }

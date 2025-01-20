@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -19,10 +20,18 @@ namespace DDD.Scripts.Game.RockPaperScissors
         private readonly List<Choice> playerChoices = new();
         private List<Choice> botChoices = new();
         private readonly System.Random random = new();
+        
+        public Action OnResetGame;
 
         private void Start()
         {
             InitializeGame();
+        }
+
+        public void ResetGame()
+        {
+            InitializeGame();
+            OnResetGame?.Invoke();
         }
 
         private void InitializeGame()

@@ -11,24 +11,26 @@ namespace DDD.Scripts.Game.rock_paper_scissors
         public Button me;
         public DDDRockPaperScissorsManager manager;
         public GameObject vis;
+
         private void Start()
         {
             me.onClick.RemoveAllListeners();
             me.onClick.AddListener((() =>
             {
-                manager.HandlePlayerChoice(choice,((state) =>
+                manager.HandlePlayerChoice(choice, ((state) =>
                 {
                     if (state == GameState.PlayerPickFirst)
                     {
-                        vis.SetActive(true);     
+                        vis.SetActive(true);
                     }
-                    else if(state == GameState.PlayerPickSecond)
+                    else if (state == GameState.PlayerPickSecond)
                     {
                         Deselect();
                     }
                 }));
-               
             }));
+            
+            manager.OnResetGame += Deselect;
         }
 
         public void Deselect()
