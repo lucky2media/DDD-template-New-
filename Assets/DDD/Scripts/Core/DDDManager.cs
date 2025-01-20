@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine.UIElements;
 
 namespace DDD.Scripts.Core
@@ -13,7 +12,8 @@ namespace DDD.Scripts.Core
         public DDDFactoryManager FactoryManager { get; set; }
 
         public DDDTimeManager TimeManager { get; set; }
-
+        public DDDPoolManager PoolManager { get; set; }
+        public DDDPopupManager PopupManager { get; set; }
         public DDDManager(Action<bool> onInitAction)
         {
             if (Instance != null)
@@ -27,6 +27,8 @@ namespace DDD.Scripts.Core
                 EventsManager = new DDDEventsManager();
                 FactoryManager = new DDDFactoryManager();
                 TimeManager = new DDDTimeManager();
+                PoolManager = new DDDPoolManager();
+                PopupManager = new DDDPopupManager();
                 onInitAction?.Invoke(true);
             }
             catch (Exception e)
@@ -35,4 +37,6 @@ namespace DDD.Scripts.Core
             }
         }
     }
+
+    
 }

@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using DDD.Scripts.Core;
+using UnityEngine;
+using Random = System.Random;
 
 namespace DDD.Scripts.Game.rock_paper_scissors
 {
@@ -28,5 +31,21 @@ namespace DDD.Scripts.Game.rock_paper_scissors
                 .Take(count)
                 .ToList();
         }
+        
+        public static void WaitForAnimationComplete(this Animator animator, DDDMonoBehaviour monoBehaviour, Action onComplete)
+        {
+            monoBehaviour.WaitForFrame(() =>
+            {
+                var animationTime = animator.GetCurrentAnimatorClipInfo(0)[0].clip.length;
+
+                monoBehaviour.WaitForSeconds(animationTime, delegate
+                {
+                    onComplete?.Invoke();
+                });
+            });
+        }
+
+        
+        
     }
 }
