@@ -21,6 +21,7 @@ namespace DDD.Scripts.Game.rock_paper_scissors
                 {
                     if (state == GameState.PlayerPickFirst)
                     {
+                        me.image.color = Color.green;
                         vis.SetActive(true);
                     }
                     else if (state == GameState.PlayerPickSecond)
@@ -35,6 +36,7 @@ namespace DDD.Scripts.Game.rock_paper_scissors
 
         public void Deselect()
         {
+            me.image.color = Color.white;
             vis.SetActive(false);
         }
     }

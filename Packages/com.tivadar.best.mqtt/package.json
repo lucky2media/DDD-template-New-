@@ -1,0 +1,27 @@
+{
+  "name": "com.tivadar.best.mqtt",
+  "displayName": "Best MQTT",
+  "description": "Best MQTT is a premier Unity networking library, purpose-built for the seamless integration of the MQTT protocol. Ideal for dynamic real-time experiences like IoT device communication, messaging systems, and live data streams.",
+  "version": "3.0.3",
+  "unity": "2021.1",
+  "documentationUrl": "https://bestdocshub.pages.dev/MQTT/",
+  "changelogUrl": "https://bestdocshub.pages.dev/MQTT/changelog/",
+  "licensesUrl": "https://bestdocshub.pages.dev/HTTP/third-party-notices/",
+  "author": {
+    "name": "Tivadar György Nagy",
+    "email": "besthttp@gmail.com",
+    "url": "https://bestdocshub.pages.dev/"
+  },
+  "keywords": [ "best", "besthttp", "MQTT", "client", "iot", "tls", "https", "DNS", "TCP", "broker" ],
+  "dependencies": {
+	"com.tivadar.best.http": "3.0.0",
+	"com.tivadar.best.websockets": "3.0.0"
+  },
+  "samples": [
+    {
+      "displayName": "Samples with UI",
+      "description": "Contains a generic MQTT client implementation with template settings for popular, open brokers.",
+      "path": "Samples~/Generic Client"
+    }
+  ]
+}

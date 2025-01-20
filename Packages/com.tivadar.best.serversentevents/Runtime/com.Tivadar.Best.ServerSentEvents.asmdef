@@ -1,0 +1,16 @@
+{
+    "name": "com.Tivadar.Best.ServerSentEvents",
+    "rootNamespace": "Best.ServerSentEvents",
+    "references": [
+        "com.Tivadar.Best.HTTP"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

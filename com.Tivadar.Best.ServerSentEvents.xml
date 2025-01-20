@@ -1,0 +1,236 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>com.Tivadar.Best.ServerSentEvents</name>
+    </assembly>
+    <members>
+        <member name="T:Best.ServerSentEvents.States">
+            <summary>
+            Represents the possible states of an <see cref="T:Best.ServerSentEvents.EventSource"/> object.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.States.Initial">
+            <summary>
+            Indicates the initial state of the <see cref="T:Best.ServerSentEvents.EventSource"/>, before any action has been taken.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.States.Connecting">
+            <summary>
+            Represents the state when the <see cref="T:Best.ServerSentEvents.EventSource"/> is attempting to establish a connection.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.States.Open">
+            <summary>
+            Indicates that the <see cref="T:Best.ServerSentEvents.EventSource"/> has successfully established a connection.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.States.Retrying">
+            <summary>
+            Represents the state when the <see cref="T:Best.ServerSentEvents.EventSource"/> is attempting to reconnect after a connection loss.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.States.Closing">
+            <summary>
+            Indicates that the <see cref="T:Best.ServerSentEvents.EventSource"/> is in the process of shutting down the connection.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.States.Closed">
+            <summary>
+            Represents the state when the <see cref="T:Best.ServerSentEvents.EventSource"/> has completely closed the connection.
+            </summary>
+        </member>
+        <member name="T:Best.ServerSentEvents.EventSource">
+            <summary>
+            The EventSource class provides an implementation of the <see href="https://html.spec.whatwg.org/multipage/server-sent-events.html">Server-Sent Events (SSE) standard</see>.
+            SSE is a simple and efficient protocol to receive real-time updates over HTTP. Instead of continually polling the server for changes,
+            clients can open a single connection and receive updates as they happen, making it a powerful tool for building real-time applications.
+            
+            Why Use EventSource:
+            <list type="bullet">
+                <item><description>Reduces the amount of redundant data sent over the network, since there's no need to repeatedly poll the server.</description></item>
+                <item><description>Simplifies the client-side logic, as the protocol handles reconnects and manages the connection state.</description></item>
+                <item><description>Offers a standardized way (via <see href="https://html.spec.whatwg.org/multipage/server-sent-events.html">the W3C standard</see>) to achieve real-time communication in web applications.</description></item>
+            </list>
+            <para>This class encapsulates the complexity of the SSE protocol, offering an easy-to-use API for both sending and receiving real-time updates.</para>
+            </summary>
+            <remarks>
+            How It Works:
+            <list type="bullet">
+                <item><description>A client makes a request to an SSE-supporting server, specifying that it expects the server to keep the connection open.</description></item>
+                <item><description>The server holds the connection and sends data whenever a new event occurs. Each event is sent as a block of text terminated by a pair of newline characters.</description></item>
+                <item><description>Clients process these events as they arrive.</description></item>
+            </list>
+            </remarks>
+        </member>
+        <member name="P:Best.ServerSentEvents.EventSource.Uri">
+            <summary>
+            Gets the URI of the remote endpoint.
+            </summary>
+        </member>
+        <member name="P:Best.ServerSentEvents.EventSource.State">
+            <summary>
+            Gets the current state of the EventSource object.
+            </summary>
+        </member>
+        <member name="P:Best.ServerSentEvents.EventSource.ReconnectionTime">
+            <summary>
+            Gets or sets the duration to wait before attempting a reconnection. Defaults to 2 seconds.
+            </summary>
+            <remarks>The server can override this setting.</remarks>
+        </member>
+        <member name="P:Best.ServerSentEvents.EventSource.LastEventId">
+            <summary>
+            Gets the ID of the last successfully received event.
+            </summary>
+        </member>
+        <member name="P:Best.ServerSentEvents.EventSource.IsClosed">
+            <summary>
+            Gets a value indicating whether the EventSource is in the <see cref="F:Best.ServerSentEvents.States.Closed"/> state.
+            </summary>
+        </member>
+        <member name="P:Best.ServerSentEvents.EventSource.LoggingContext">
+            <summary>
+            Gets the logging context for the current EventSource instance.
+            </summary>
+        </member>
+        <member name="P:Best.ServerSentEvents.EventSource.InternalRequest">
+            <summary>
+            Gets the internal <see cref="T:Best.HTTP.HTTPRequest"/> object used by the EventSource for communication.
+            </summary>
+        </member>
+        <member name="E:Best.ServerSentEvents.EventSource.OnOpen">
+            <summary>
+            Called when successfully connected to the server.
+            </summary>
+        </member>
+        <member name="E:Best.ServerSentEvents.EventSource.OnMessage">
+            <summary>
+            Called on every message received from the server.
+            </summary>
+        </member>
+        <member name="E:Best.ServerSentEvents.EventSource.OnError">
+            <summary>
+            Called when an error occurs.
+            </summary>
+        </member>
+        <member name="E:Best.ServerSentEvents.EventSource.OnRetry">
+            <summary>
+            Called when the EventSource will try to do a retry attempt. If this function returns with false, it will cancel the attempt.
+            </summary>
+        </member>
+        <member name="E:Best.ServerSentEvents.EventSource.OnComment">
+            <summary>
+            This event is called for comments received from the server.
+            </summary>
+        </member>
+        <member name="E:Best.ServerSentEvents.EventSource.OnClosed">
+            <summary>
+            Called when the EventSource object closed.
+            </summary>
+        </member>
+        <member name="E:Best.ServerSentEvents.EventSource.OnStateChanged">
+            <summary>
+            Called every time when the State property changed.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.EventTable">
+            <summary>
+            A dictionary to store eventName => delegate mapping.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.RetryCount">
+            <summary>
+            Number of retry attempts made.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.RetryCalled">
+            <summary>
+            When we called the Retry function. We will delay the Open call from here.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.LineBuffer">
+            <summary>
+            Buffer for the read data.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.LineBufferPos">
+            <summary>
+            Buffer position.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.CurrentMessage">
+            <summary>
+            The currently receiving and parsing message
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.CompletedMessages">
+            <summary>
+            Completed messages that waiting to be dispatched
+            </summary>
+        </member>
+        <member name="M:Best.ServerSentEvents.EventSource.Open">
+            <summary>
+            Start to connect to the remote server.
+            </summary>
+        </member>
+        <member name="M:Best.ServerSentEvents.EventSource.Close">
+            <summary>
+            Start to close the connection.
+            </summary>
+        </member>
+        <member name="M:Best.ServerSentEvents.EventSource.On(System.String,Best.ServerSentEvents.OnEventDelegate)">
+            <summary>
+            With this function an event handler can be subscribed for an event name.
+            </summary>
+        </member>
+        <member name="M:Best.ServerSentEvents.EventSource.Off(System.String)">
+            <summary>
+            With this function the event handler can be removed for the given event name.
+            </summary>
+            <remarks>The event is still will be sent by the server and processed by the client.</remarks>
+            <param name="eventName">The name of the event to unsubscribe from.</param>
+        </member>
+        <member name="T:Best.ServerSentEvents.Message">
+            <summary>
+            Represents a single Server-Sent Event message as specified by the W3C SSE specification.
+            This encapsulates individual data sent over an SSE connection, providing event details, payload data, and related metadata.
+            Each message can represent actual data or comments from the server.
+            </summary>
+        </member>
+        <member name="P:Best.ServerSentEvents.Message.Id">
+            <summary>
+            Represents the unique identifier for the event message, utilized to ensure message continuity in case of connection disruptions.
+            </summary>
+            <example>If the server sends a message with an "id" of "1", and subsequently the connection is interrupted, 
+            the client will send a `Last-Event-ID` header with the value "1" upon reconnection, signaling the server from where to resume.
+            If an "id" field is received with no value, it resets the last event ID to an empty string, implying that no `Last-Event-ID` header will be sent during the next reconnection attempt.
+            A <c>null</c> Id indicates that the server didn't provide an identifier for that particular message.
+            </example>
+        </member>
+        <member name="P:Best.ServerSentEvents.Message.Event">
+            <summary>
+            Name of the event, or an empty string.
+            </summary>
+        </member>
+        <member name="P:Best.ServerSentEvents.Message.Data">
+            <summary>
+            The actual payload of the message.
+            </summary>
+        </member>
+        <member name="P:Best.ServerSentEvents.Message.Retry">
+            <summary>
+            A reconnection time, in milliseconds. This must initially be a user-agent-defined value, probably in the region of a few seconds.
+            </summary>
+        </member>
+        <member name="P:Best.ServerSentEvents.Message.IsComment">
+            <summary>
+            If this is true, the Data property holds the comment sent by the server.
+            </summary>
+        </member>
+        <member name="T:UnitySourceGeneratedAssemblyMonoScriptTypes_v1.MonoScriptData">
+            <summary>
+            Data is UTF-8 encoded strings
+            </summary>
+        </member>
+    </members>
+</doc>

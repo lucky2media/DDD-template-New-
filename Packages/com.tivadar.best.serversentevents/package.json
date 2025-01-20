@@ -1,0 +1,26 @@
+{
+  "name": "com.tivadar.best.serversentevents",
+  "displayName": "Best Server-Sent Events",
+  "description": "The EventSource class provides an implementation of the Server-Sent Events (SSE) standard. SSE is a simple and efficient protocol to receive real-time updates over HTTP. Instead of continually polling the server for changes, clients can open a single connection and receive updates as they happen, making it a powerful tool for building real-time applications.",
+  "version": "3.0.1",
+  "unity": "2021.1",
+  "documentationUrl": "https://bestdocshub.pages.dev/ServerSentEvents/",
+  "changelogUrl": "https://bestdocshub.pages.dev/ServerSentEvents/changelog/",
+  "licensesUrl": "https://bestdocshub.pages.dev/HTTP/third-party-notices/",
+  "author": {
+    "name": "Tivadar György Nagy",
+    "email": "besthttp@gmail.com",
+    "url": "https://bestdocshub.pages.dev/"
+  },
+  "keywords": [ "best", "besthttp", "http", "tls", "https", "sse", "server-sent events", "eventsource", "DNS", "http2" ],
+  "dependencies": {
+	"com.tivadar.best.http": "3.0.0"
+  },
+  "samples": [
+    {
+      "displayName": "Simple Sample",
+      "description": "Contains sample codes for various SSE related scenarios.",
+      "path": "Samples~/With UI"
+    }
+  ]
+}
