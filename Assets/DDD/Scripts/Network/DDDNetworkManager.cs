@@ -4,8 +4,9 @@ using System;
 using UnityEngine.Networking;
 using System.Collections;
 using System.Text;
-using NativeWebSocket;
+
 using System.Threading.Tasks;
+using Best.WebSockets;
 using DDD.Game;
 using DDD.Scripts.Core;
 using Newtonsoft.Json;
@@ -21,11 +22,11 @@ public class DDDNetworkManager : DDDMonoBehaviour
     #region Serialized Fields
 
     [Header("Server Configuration")] [SerializeField]
-    private string serverUrl = "https://backend-staging.dingdingding.world";
+    protected string serverUrl = "https://backend-staging.dingdingding.world";
 
     [SerializeField] private string wsGameUri = "piggytap";
     [SerializeField] private string wsLiveUri = "wss://ws.dingdingding.world";
-    [SerializeField] private string wsLocalUri = "ws://localhost:8888";
+    [SerializeField] protected string wsLocalUri = "ws://localhost:8888";
     [SerializeField] private string refreshTokenLocalUri = "auth/refresh_token";
 
     [Header("Authentication")] [SerializeField]
@@ -35,7 +36,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
     private bool useMockData = false;
 
     [SerializeField] private bool autoConnectWebSocket = false;
-    [SerializeField] private bool isLocalServer = false;
+    [SerializeField] protected bool isLocalServer = false;
 
     #endregion
 
@@ -71,7 +72,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
 
     private void Update()
     {
-        DispatchWebSocketMessages();
+      //  DispatchWebSocketMessages();
     }
 
     private async void OnDestroy()
@@ -106,19 +107,19 @@ public class DDDNetworkManager : DDDMonoBehaviour
 
     #region HTTP Request Helpers
 
-    private string BuildUrl(string endpoint)
+    protected string BuildUrl(string endpoint)
     {
         return isLocalServer ? $"{wsLocalUri}/{endpoint}" : $"{serverUrl}/{endpoint}";
     }
 
-    private UnityWebRequest CreateGetRequest(string url)
+    protected UnityWebRequest CreateGetRequest(string url)
     {
         var request = UnityWebRequest.Get(url);
         SetCommonHeaders(request);
         return request;
     }
 
-    private UnityWebRequest CreatePostRequest(string url, string body)
+    protected UnityWebRequest CreatePostRequest(string url, string body)
     {
         var request = new UnityWebRequest(url, "POST");
         var bodyRaw = string.IsNullOrEmpty(body) ? new byte[0] : Encoding.UTF8.GetBytes(body);
@@ -242,23 +243,23 @@ public class DDDNetworkManager : DDDMonoBehaviour
             await DisconnectWebSocket();
         }
 
-        websocket = new WebSocket(wsLiveUri);
-        SetupWebSocketCallbacks();
+        //websocket = new WebSocket(wsLiveUri);
+        //SetupWebSocketCallbacks();
 
         Debug.Log($"[WebSocket] Connecting to {wsLiveUri}...");
-        await websocket.Connect();
+        //await websocket.Connect();
     }
 
     public async Task DisconnectWebSocket()
     {
         if (websocket != null)
         {
-            await websocket.Close();
+           // await websocket.Close();
             websocket = null;
             isWebSocketConnected = false;
         }
     }
-
+/*
     private void SetupWebSocketCallbacks()
     {
         websocket.OnOpen += HandleWebSocketOpen;
@@ -292,7 +293,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
     #endregion
 
     #region Response Handlers
-
+*/
     private void HandleSuccessfulUserInfoResponse(UnityWebRequest request, Action<ResponseWrapper> callback)
     {
         try
@@ -367,11 +368,12 @@ public class DDDNetworkManager : DDDMonoBehaviour
         Debug.LogError($"[WebSocket] Error: {error}");
     }
 
+    /*
     private void HandleWebSocketClose(WebSocketCloseCode closecode)
     {
         Debug.Log("[WebSocket] Connection closed!");
         isWebSocketConnected = false;
-    }
+    }*/
 
     private void HandleWebSocketMessage(byte[] bytes)
     {
@@ -384,7 +386,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
 
     #region Utility Methods
 
-    private void LogNetworkRequest(string type, string url, object data = null)
+    protected void LogNetworkRequest(string type, string url, object data = null)
     {
         Debug.Log($"[Network] Making {type} request to: {url}");
         if (data != null)
@@ -393,7 +395,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
         }
     }
 
-    private void LogNetworkResponse(string type, UnityWebRequest request)
+    protected void LogNetworkResponse(string type, UnityWebRequest request)
     {
         Debug.Log($"[Network] {type} Response Code: {request.responseCode}");
         Debug.Log($"[Network] {type} Response: {request.downloadHandler.text}");
@@ -462,7 +464,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
 
         string jsonMessage = JsonUtility.ToJson(auth);
         LogWebSocketMessage("Sending auth", jsonMessage);
-        await websocket.SendText(jsonMessage);
+        //await websocket.SendText(jsonMessage);
     }
 
     private void ProcessWebSocketMessage(string message)
