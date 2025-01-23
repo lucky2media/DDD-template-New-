@@ -15,7 +15,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
 {
     #region Singleton
 
-    public static DDDNetworkManager Instance { get; private set; }
+    public static DDDNetworkManager Instance { get; protected set; }
 
     #endregion
 
@@ -89,7 +89,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
 
     #region Initialization
 
-    private void InitializeSingleton()
+    public virtual void InitializeSingleton()
     {
         if (Instance == null)
         {
