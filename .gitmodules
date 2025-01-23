@@ -1,0 +1,3 @@
+[submodule "Assets/CoreProject"]
+	path = Assets/CoreProject
+	url = https://github.com/lucky2media/PackageManager.git
