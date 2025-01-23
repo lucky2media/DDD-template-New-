@@ -14,7 +14,7 @@ public class GitSubmoduleManager : EditorWindow
     private bool isRefreshing = false;
     private Dictionary<string, string> commitMessages = new Dictionary<string, string>();
 
-    [MenuItem("Tools/Git Submodule Manager")]
+    [MenuItem("DDD/Tools/Git Submodule Manager")]
     public static void ShowWindow()
     {
         GetWindow<GitSubmoduleManager>("Git Submodule Manager");
