@@ -99,7 +99,10 @@ public class DDDNetworkManager : DDDMonoBehaviour
         else
         {
             DDDDebug.Log($"{Instance.gameObject.name} is already in use.", Instance.gameObject);
-            Destroy(gameObject);
+            Destroy(Instance.gameObject);
+            accessToken =Instance.accessToken ;
+            Instance = this;
+            Manager.NetworkManager = this;
         }
     }
 
