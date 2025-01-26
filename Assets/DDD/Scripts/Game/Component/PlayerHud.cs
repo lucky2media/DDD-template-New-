@@ -8,11 +8,11 @@ namespace DDD.Scripts.Game.Component
 {
     public class PlayerHud : DDDMonoBehaviour
     {
-        public PlayerData playerData;
-        [FormerlySerializedAs("networkManager")] [SerializeField] private DDDNetworkManager dddNetworkManager;
+        
+        
 
         [SerializeField] private TextMeshProUGUI userBalanceText;
-        private Balance balance => playerData.userDTO.Data.Balance;
+        private Balance balance => Manager.playerData.userDTO.Data.Balance;
         public Mode currencyType = Mode.coins;
         public Image currencyImage;
         public Sprite coinsSprite;
@@ -26,16 +26,17 @@ namespace DDD.Scripts.Game.Component
             {
                 instance = this;
             }
-            playerData = new PlayerData(dddNetworkManager,()=>
+            
+        }
+
+        private void Start()
+        {
+            Manager.playerData = new PlayerData(Manager.NetworkManager,()=>
             {
                 UpdateUI(null);
             });
             iconButton.onClick.RemoveAllListeners();
             iconButton.onClick.AddListener((() => { ChangeCurrency(); }));
-        }
-
-        private void Start()
-        {
             Manager.EventsManager.AddListener(DDDEventNames.OnUserBalanceChanged,UpdateUI);
         }
 
@@ -43,7 +44,7 @@ namespace DDD.Scripts.Game.Component
 
         private void UpdateUI(object obj)
         {
-            playerData.FetchUserData(() =>
+            Manager. playerData.FetchUserData(() =>
             {
                 var t = "";
                 switch (currencyType)

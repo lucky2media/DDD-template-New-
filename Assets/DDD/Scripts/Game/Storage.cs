@@ -3,6 +3,7 @@ using System;
 using System.Reflection;
 using UnityEngine;
 using System.Linq;
+using DDD.Scripts.Core;
 
 namespace Wuprui.Core.DataStorage
 {
@@ -66,7 +67,7 @@ namespace Wuprui.Core.DataStorage
 				}
 			}
 
-			Debug.LogWarning($"Data with key {dataKey} was not added to repository yet. Default value returned");
+			DDDDebug.LogWarning($"Data with key {dataKey} was not added to repository yet. Default value returned");
 
 			value = default;
 

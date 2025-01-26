@@ -98,7 +98,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
         }
         else
         {
-            Debug.Log($"{Instance.gameObject.name} is already in use.", Instance.gameObject);
+            DDDDebug.Log($"{Instance.gameObject.name} is already in use.", Instance.gameObject);
             Destroy(gameObject);
         }
     }
@@ -246,7 +246,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
         //websocket = new WebSocket(wsLiveUri);
         //SetupWebSocketCallbacks();
 
-        Debug.Log($"[WebSocket] Connecting to {wsLiveUri}...");
+        DDDDebug.Log($"[WebSocket] Connecting to {wsLiveUri}...");
         //await websocket.Connect();
     }
 
@@ -303,7 +303,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[Network] Failed to parse response: {e.Message}");
+            DDDDebug.LogException($"[Network] Failed to parse response: {e.Message}");
         }
     }
 
@@ -317,7 +317,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[Network] Token refresh failed: {e.Message}");
+            DDDDebug.LogException($"[Network] Token refresh failed: {e.Message}");
         }
     }
 
@@ -335,20 +335,20 @@ public class DDDNetworkManager : DDDMonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[Network] Failed to parse bet response: {e.Message}");
+            DDDDebug.LogException($"[Network] Failed to parse bet response: {e.Message}");
             callback?.Invoke(CreateErrorBetResponse("Failed to parse server response"));
         }
     }
 
     private void HandleFailedBetResponse(UnityWebRequest request, Action<BetResponse> callback)
     {
-        Debug.LogError($"[Network] Request failed: {request.error}");
+        DDDDebug.LogException($"[Network] Request failed: {request.error}");
         callback?.Invoke(CreateErrorBetResponse(request.error));
     }
 
     private void HandleUnauthorizedResponse(Action retryAction)
     {
-        Debug.LogWarning("[Network] Authentication failed - attempting token refresh");
+        DDDDebug.LogWarning("[Network] Authentication failed - attempting token refresh");
         StartCoroutine(RefreshTokenCoroutine(retryAction));
     }
 
@@ -358,14 +358,14 @@ public class DDDNetworkManager : DDDMonoBehaviour
 
     private void HandleWebSocketOpen()
     {
-        Debug.Log("[WebSocket] Connected!");
+        DDDDebug.Log("[WebSocket] Connected!");
         isWebSocketConnected = true;
         SendWebSocketAuth();
     }
 
     private void HandleWebSocketError(string error)
     {
-        Debug.LogError($"[WebSocket] Error: {error}");
+        DDDDebug.LogException($"[WebSocket] Error: {error}");
     }
 
     /*
@@ -388,22 +388,22 @@ public class DDDNetworkManager : DDDMonoBehaviour
 
     protected void LogNetworkRequest(string type, string url, object data = null)
     {
-        Debug.Log($"[Network] Making {type} request to: {url}");
+        DDDDebug.Log($"[Network] Making {type} request to: {url}");
         if (data != null)
         {
-            Debug.Log($"[Network] Request data: {JsonUtility.ToJson(data)}");
+            DDDDebug.Log($"[Network] Request data: {JsonUtility.ToJson(data)}");
         }
     }
 
     protected void LogNetworkResponse(string type, UnityWebRequest request)
     {
-        Debug.Log($"[Network] {type} Response Code: {request.responseCode}");
-        Debug.Log($"[Network] {type} Response: {request.downloadHandler.text}");
+        DDDDebug.Log($"[Network] {type} Response Code: {request.responseCode}");
+        DDDDebug.Log($"[Network] {type} Response: {request.downloadHandler.text}");
     }
 
     private void LogWebSocketMessage(string direction, string message)
     {
-        Debug.Log($"[WebSocket] {direction}: {message}");
+        DDDDebug.Log($"[WebSocket] {direction}: {message}");
     }
 
     private BetResponse CreateErrorBetResponse(string error)
@@ -437,7 +437,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
 
     private void HandleFailedResponse(UnityWebRequest request, Action<ResponseWrapper> callback)
     {
-        Debug.LogWarning($"[Network] Request failed: {request.error}");
+        DDDDebug.LogWarning($"[Network] Request failed: {request.error}");
     }
 
     private BetRequest CreateBetRequestData(int betAmount)
@@ -477,22 +477,22 @@ public class DDDNetworkManager : DDDMonoBehaviour
             switch (wsMessage.type)
             {
                 case "auth_success":
-                    Debug.Log("[WebSocket] Authentication successful");
+                    DDDDebug.Log("[WebSocket] Authentication successful");
                     break;
                 case "auth_error":
-                    Debug.LogError("[WebSocket] Authentication failed");
+                    DDDDebug.LogException("[WebSocket] Authentication failed");
                     break;
                 case "game_update":
                     HandleGameUpdate(wsMessage.data);
                     break;
                 default:
-                    Debug.Log($"[WebSocket] Unhandled message type: {wsMessage.type}");
+                    DDDDebug.Log($"[WebSocket] Unhandled message type: {wsMessage.type}");
                     break;
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[WebSocket] Failed to process message: {e.Message}");
+            DDDDebug.LogException($"[WebSocket] Failed to process message: {e.Message}");
         }
     }
 
@@ -500,11 +500,11 @@ public class DDDNetworkManager : DDDMonoBehaviour
     {
         try
         {
-            Debug.Log($"[WebSocket] Game update received: {JsonUtility.ToJson(data)}");
+            DDDDebug.Log($"[WebSocket] Game update received: {JsonUtility.ToJson(data)}");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[WebSocket] Failed to process game update: {e.Message}");
+            DDDDebug.LogException($"[WebSocket] Failed to process game update: {e.Message}");
         }
     }
 }

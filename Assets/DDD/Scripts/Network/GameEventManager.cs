@@ -52,7 +52,7 @@ namespace DDD.Network
 #if UNITY_WEBGL && !UNITY_EDITOR
         SendWebMessage(message);
 #else
-            Debug.Log($"[GameEvent] Would send to web: {message}");
+            DDDDebug.Log($"[GameEvent] Would send to web: {message}");
 #endif
         }
 

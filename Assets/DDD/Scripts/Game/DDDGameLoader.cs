@@ -9,6 +9,7 @@ public class DDDGameLoader : MonoBehaviour
 {
     public GameObject errorScreen;
     [SerializeField]private LobbyScreen lobbyScreen;
+    [SerializeField] DDDNetworkManager networkManager;
     DDDManager manager;
     private void Awake()
     {
@@ -29,7 +30,7 @@ public class DDDGameLoader : MonoBehaviour
                
             }
           
-        } ));
+        } ),networkManager);
     }
 
     private void ShowGames()
