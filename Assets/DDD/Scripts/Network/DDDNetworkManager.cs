@@ -60,6 +60,22 @@ public class DDDNetworkManager : DDDMonoBehaviour
     private void Awake()
     {
         InitializeSingleton();
+
+        CookieReader cookieReader = new CookieReader(() =>
+        {
+            var token = CookieReader.FetchCookieValue("AccessToken");
+            if (string.IsNullOrEmpty(token))
+            {
+                Debug.LogError($"Failed to get cookie value for {gameName}");
+            }
+            else
+            {
+                accessToken = token;
+            }
+        });
+       
+
+
     }
 
     private async void Start()
@@ -304,9 +320,9 @@ public class DDDNetworkManager : DDDMonoBehaviour
             var response = JsonConvert.DeserializeObject<ResponseWrapper>(request.downloadHandler.text);
             callback?.Invoke(response);
         }
-        catch (Exception e)
-        {
-            DDDDebug.LogException($"[Network] Failed to parse response: {e.Message}");
+        catch (Exception e){
+            
+        Debug.LogError($"[Network] Failed to parse response: {e.Message}");
         }
     }
 

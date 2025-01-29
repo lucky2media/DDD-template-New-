@@ -302,7 +302,7 @@ public class AuthData
     public int LoginCount { get; set; }
 
     [JsonProperty("lastLoginDate")]
-    public DateTime LastLoginDate { get; set; }
+    public DateTime? LastLoginDate { get; set; }
 
     [JsonProperty("googleId")]
     public string? GoogleId { get; set; }

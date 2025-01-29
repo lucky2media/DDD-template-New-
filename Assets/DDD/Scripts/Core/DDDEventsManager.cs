@@ -50,7 +50,10 @@ namespace DDD.Scripts.Core
         OnUserBalanceChanged,
         OnValueChanged,
         OnCurrencyChanged,
-        OnGameInitialized
+        OnGameInitialized,
+        OnGameStart,
+        OnGameOver,
+        OnFirstMoveDone
     }
     
     

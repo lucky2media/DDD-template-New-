@@ -1,3 +1,4 @@
+using System.Collections;
 using DDD.Scripts.Core;
 using TMPro;
 using UnityEngine;
@@ -8,7 +9,6 @@ namespace DDD.Scripts.Game.Component
 {
     public class PlayerHud : DDDMonoBehaviour
     {
-        
         
 
         [SerializeField] private TextMeshProUGUI userBalanceText;
@@ -29,8 +29,9 @@ namespace DDD.Scripts.Game.Component
             
         }
 
-        private void Start()
+        private IEnumerator Start()
         {
+            yield return new WaitForSeconds(1);
             Manager.playerData = new PlayerData(Manager.NetworkManager,()=>
             {
                 UpdateUI(null);
