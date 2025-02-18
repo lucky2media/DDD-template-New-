@@ -25,7 +25,7 @@ namespace DDD.Game
             Manager.EventsManager.AddListener(DDDEventNames.OnValueChanged,SetAmount);
         }
 
-        private void SetAmount(object obj)
+        public void SetAmount(object obj)
         {
             betAmount = (int)obj;
         }

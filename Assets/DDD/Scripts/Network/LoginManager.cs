@@ -1,10 +1,11 @@
 using System.Collections;
 using System.Text;
+using DDD.Scripts.Core;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class LoginManager : MonoBehaviour
+public class LoginManager : DDDMonoBehaviour
 {
     private const string LOGIN_URL = "https://backend-staging.dingdingding.com/auth/login";
 
@@ -39,14 +40,14 @@ public class LoginManager : MonoBehaviour
 
             if (request.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log(request.downloadHandler.text);
+                DDDDebug.Log(request.downloadHandler.text);
                 string token = JsonConvert.DeserializeObject<LoginResponse>(request.downloadHandler.text).accessToken;
-                Debug.Log("=" + token);
+                DDDDebug.Log("=" + token);
                
             }
             else
             {
-                Debug.LogError(" " + request.error);
+                DDDDebug.LogException(" " + request.error);
             }
         }
     }

@@ -50,9 +50,9 @@ namespace DDD.Network
         private void SendMessageToWebContainer(string message)
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-        SendWebMessage(message);
+       // SendWebMessage(message);
 #else
-            Debug.Log($"[GameEvent] Would send to web: {message}");
+            DDDDebug.Log($"[GameEvent] Would send to web: {message}");
 #endif
         }
 
@@ -97,15 +97,21 @@ namespace DDD.Network
         }
     }
 
-    public static class WebGLPlugins
+    public class WebGLPlugins
     {
         [System.Runtime.InteropServices.DllImport("__Internal")]
-        private static extern void SendMessageToParent(string message);
+        private static extern void PostMessage(string eventType, string domen, string value, int progress = -1);
 
         public static void SendWebMessage(string message)
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-            SendMessageToParent(message);
+        try {
+            var eventData = JsonUtility.FromJson<GameEvent>(message);
+            PostMessage(eventData.eventType, "*", JsonUtility.ToJson(eventData.value), -1);
+        }
+        catch (System.Exception e) {
+            Debug.LogError($"Error parsing message: {e.Message}");
+        }
 #endif
         }
     }

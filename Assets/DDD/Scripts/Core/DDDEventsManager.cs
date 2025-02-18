@@ -49,7 +49,11 @@ namespace DDD.Scripts.Core
         OfflineTimeRefreshed,
         OnUserBalanceChanged,
         OnValueChanged,
-        OnCurrencyChanged
+        OnCurrencyChanged,
+        OnGameInitialized,
+        OnGameStart,
+        OnGameOver,
+        OnFirstMoveDone
     }
     
     

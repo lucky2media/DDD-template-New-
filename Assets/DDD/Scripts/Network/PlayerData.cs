@@ -1,4 +1,5 @@
 using System;
+using DDD.Scripts.Core;
 using UnityEngine;
 
 [Serializable]
@@ -17,7 +18,7 @@ public class PlayerData
 
     public void FetchUserData(Action onConnected)
     {
-        Debug.Log("[Example] Fetching user data...");
+       DDDDebug.Log("[Example] Fetching user data...");
         
         _dddNetworkManager.GetUserInfo((userData) => {
             if (userData.Success)
@@ -27,7 +28,7 @@ public class PlayerData
             }
             else
             {
-                Debug.LogError($"[Example] Error: {userData}");
+                DDDDebug.LogException($"[Example] Error: {userData}");
             }
             
         });

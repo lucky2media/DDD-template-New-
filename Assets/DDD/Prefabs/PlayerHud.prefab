@@ -88,7 +88,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2119441379865796917}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41d5ff4d2315e4658afc67c96f1326eb, type: 3}
+  m_Script: {fileID: 11500000, guid: e48daf761b3c4a79a82aa62805b91450, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   playerData: {}
@@ -96,8 +96,8 @@ MonoBehaviour:
   userBalanceText: {fileID: 5485996596731486191}
   currencyType: 0
   currencyImage: {fileID: 8180687681728483713}
-  coinsSprite: {fileID: 0}
-  sweepsSprite: {fileID: 0}
+  coinsSprite: {fileID: 21300000, guid: a98399492bec94ca493d01e7f1d9bdef, type: 3}
+  sweepsSprite: {fileID: 21300000, guid: 06b738821ff6344709d61c04d74e5da8, type: 3}
   iconButton: {fileID: 6261397218793543954}
 --- !u!1 &3866507837617253849
 GameObject:
