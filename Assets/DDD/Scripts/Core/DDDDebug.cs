@@ -29,5 +29,11 @@ namespace DDD.Scripts.Core
         {
             Debug.LogWarning(message.ToString());
         }
+
+        [Conditional("LOGS_ENABLE")]
+        public static void LogError(string p0)
+        {
+            Debug.LogError(p0);
+        }
     }
 }

@@ -11,20 +11,27 @@ namespace DDD.Scripts.Game.rock_paper_scissors
     {
         [SerializeField] GameObject screen;
         [SerializeField] Image banner;
-        [SerializeField] private Sprite winSprite;
-        [SerializeField] private Sprite loseSprite;
+        [SerializeField] private GameObject winSprite;
+        [SerializeField] private GameObject loseSprite;
+        [SerializeField] private GameObject drawSprite;
         [SerializeField] private Button playAgain;
         [SerializeField] private DDDRockPaperScissorsManager manager;
-        public void Show(bool win)
+        public void Show(GameResult result)
         {
+            HideAllHeadlines();
             screen.SetActive(true);
-            if (win)
+            playAgain.gameObject.SetActive(true);
+            if (result == GameResult.Win)
             {
-                banner.sprite = winSprite;
+                winSprite.SetActive(true);
+            }
+            else if (result == GameResult.Lose)
+            {
+              loseSprite.SetActive(true);
             }
             else
             {
-                banner.sprite = loseSprite;
+                drawSprite.SetActive(true);
             }
             playAgain.interactable = true;
             playAgain.onClick.RemoveAllListeners();
@@ -34,5 +41,25 @@ namespace DDD.Scripts.Game.rock_paper_scissors
                screen.SetActive(false);
             }));
         }
+
+        public void HideAllHeadlines()
+        {
+            winSprite.SetActive(false);
+            loseSprite.SetActive(false);
+            drawSprite.SetActive(false);
+        }
+
+        public void Hide()
+        {
+            playAgain.gameObject.SetActive(false);
+        }
+    }
+
+    public enum GameResult
+    {
+        Win = 0,
+        Lose = 1,
+        draw = 2
+        
     }
 }
