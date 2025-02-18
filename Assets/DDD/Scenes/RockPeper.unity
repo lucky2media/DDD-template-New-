@@ -272,7 +272,7 @@ MonoBehaviour:
   useMockData: 0
   autoConnectWebSocket: 0
   isLocalServer: 1
-  gameName: game/coin_flip/play
+  gameName: game/rock_paper_scissors_minus_one
 --- !u!114 &68334340
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1819,7 +1819,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerData: {}
-  dddNetworkManager: {fileID: 68334339}
   userBalanceText: {fileID: 607231307}
   currencyType: 0
   currencyImage: {fileID: 173016864}

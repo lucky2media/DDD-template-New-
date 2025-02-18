@@ -218,75 +218,6 @@ MonoBehaviour:
   minValue: 0
   maxValue: 10000
   incrementAmount: 1
---- !u!1 &68334337
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 68334338}
-  - component: {fileID: 68334339}
-  - component: {fileID: 68334340}
-  m_Layer: 0
-  m_Name: ---NetworkManager---
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &68334338
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 68334337}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 214.55925, y: 30.66298, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &68334339
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 68334337}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 894204a654ee4cb0a866fb82818b920d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  serverUrl: https://backend-staging.dingdingding.world
-  wsGameUri: piggytap
-  wsLiveUri: wss://ws.dingdingding.world
-  wsLocalUri: http://localhost:3000
-  refreshTokenLocalUri: auth/refresh_token
-  accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImFjY2VzcyI6IioiLCJpYXQiOjE3MzcyNzYyNzEsImV4cCI6MTczNzM2MjY3MX0.nWDsoabIuWu-sSmWD5LEcX3Qc0WYzR0MV4-yOLcpZEo
-  useMockData: 0
-  autoConnectWebSocket: 0
-  isLocalServer: 1
-  gameName: game/coin_flip/play
---- !u!114 &68334340
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 68334337}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5fa9eae0ff4645329dedd5ab4eafebf3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  email: defaultUser@gmail.com
-  password: 
 --- !u!1 &173016862
 GameObject:
   m_ObjectHideFlags: 0
@@ -1086,7 +1017,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerData: {}
-  dddNetworkManager: {fileID: 68334339}
   userBalanceText: {fileID: 607231307}
   currencyType: 0
   currencyImage: {fileID: 173016864}
@@ -2503,7 +2433,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d5112fa6f9364475b77074d062a53a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dddNetworkManager: {fileID: 68334339}
+  dddNetworkManager: {fileID: 0}
 --- !u!114 &1736228498
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3182,4 +3112,3 @@ SceneRoots:
   - {fileID: 1907668521}
   - {fileID: 1736228496}
   - {fileID: 870917249}
-  - {fileID: 68334338}
