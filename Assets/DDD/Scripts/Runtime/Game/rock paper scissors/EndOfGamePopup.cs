@@ -1,4 +1,5 @@
 using DDD.Scripts.Core;
+using DDD.Scripts.Lobby;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Serialization;
@@ -100,12 +101,15 @@ namespace DDD.Scripts.Game.RockPaperScissors
             switch (result)
             {
                 case GameResult.Win:
+                    DDDAudioManager.instance.PlayWinSound();
                     _winSprite?.SetActive(true);
                     break;
                 case GameResult.Lose:
+                    DDDAudioManager.instance.PlayLoseSound();
                     _loseSprite?.SetActive(true);
                     break;
                 case GameResult.Draw:
+                     DDDAudioManager.instance.PlayDrawSound();
                     _drawSprite?.SetActive(true);
                     break;
             }

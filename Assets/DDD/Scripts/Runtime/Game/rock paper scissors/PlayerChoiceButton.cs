@@ -1,5 +1,6 @@
 using System;
 using DDD.Scripts.Core;
+using DDD.Scripts.Lobby;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Serialization;
@@ -84,6 +85,7 @@ namespace DDD.Scripts.Game.RockPaperScissors
             if (_manager == null || _button == null) return;
 
             _manager.HandlePlayerChoice(_choice, HandleStateCallback);
+            DDDAudioManager.instance.PlayButtonPressSound();
         }
 
         private void HandleStateCallback(DDDRockPaperScissorsManager.GameState state)
