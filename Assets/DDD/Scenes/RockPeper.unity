@@ -1039,9 +1039,9 @@ CanvasGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 275374187}
   m_Enabled: 1
-  m_Alpha: 0
-  m_Interactable: 0
-  m_BlocksRaycasts: 0
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
 --- !u!1 &278605873
 GameObject:
@@ -1633,10 +1633,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9323b6d6adb400fbb812876c629e7c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  choice: 0
-  me: {fileID: 651452954}
-  manager: {fileID: 1736228497}
-  vis: {fileID: 1316657878}
+  _choice: 0
+  _button: {fileID: 651452954}
+  _manager: {fileID: 1736228497}
+  _visualIndicator: {fileID: 1316657878}
 --- !u!1 &667740686
 GameObject:
   m_ObjectHideFlags: 0
@@ -2208,10 +2208,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9323b6d6adb400fbb812876c629e7c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  choice: 1
-  me: {fileID: 864912570}
-  manager: {fileID: 1736228497}
-  vis: {fileID: 1946092900}
+  _choice: 1
+  _button: {fileID: 864912570}
+  _manager: {fileID: 1736228497}
+  _visualIndicator: {fileID: 1946092900}
 --- !u!1 &866132654
 GameObject:
   m_ObjectHideFlags: 0
@@ -2643,10 +2643,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9323b6d6adb400fbb812876c629e7c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  choice: 2
-  me: {fileID: 921992973}
-  manager: {fileID: 1736228497}
-  vis: {fileID: 1395661755}
+  _choice: 2
+  _button: {fileID: 921992973}
+  _manager: {fileID: 1736228497}
+  _visualIndicator: {fileID: 1395661755}
 --- !u!1 &938585179
 GameObject:
   m_ObjectHideFlags: 0
@@ -4334,21 +4334,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a14f7fc9f3cae4e208cd04196a2db338, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rockVisualPlayer: {fileID: 21300000, guid: 84ddca573683f409eb6b6f5134b1c999, type: 3}
-  paperVisualPlayer: {fileID: 21300000, guid: 1857d76de5fd1474cbd182a2ce853fdd, type: 3}
-  scissorsVisualPlayer: {fileID: 21300000, guid: c86dd3f2ea5e142c98c9f46dfa0fb176, type: 3}
-  firstPickPlayer: {fileID: 709102679}
-  secondPickPlayer: {fileID: 1587299082}
-  rockVisualBot: {fileID: 21300000, guid: db058e18420434962904e54bc53f772f, type: 3}
-  paperVisualBot: {fileID: 21300000, guid: f0e02cafaf94f494180bf6305b087b11, type: 3}
-  scissorsVisualBot: {fileID: 21300000, guid: bbe07660e85f049799a71d8126ca8827, type: 3}
-  firstPickBot: {fileID: 1581558264}
-  secondPickBot: {fileID: 1513640280}
-  endOfGamePopup: {fileID: 1736228498}
-  playerChoiceButtons:
+  _rockVisualPlayer: {fileID: 21300000, guid: 84ddca573683f409eb6b6f5134b1c999, type: 3}
+  _paperVisualPlayer: {fileID: 21300000, guid: 1857d76de5fd1474cbd182a2ce853fdd, type: 3}
+  _scissorsVisualPlayer: {fileID: 21300000, guid: c86dd3f2ea5e142c98c9f46dfa0fb176, type: 3}
+  _firstPickPlayer: {fileID: 709102679}
+  _secondPickPlayer: {fileID: 1587299082}
+  _rockVisualBot: {fileID: 21300000, guid: db058e18420434962904e54bc53f772f, type: 3}
+  _paperVisualBot: {fileID: 21300000, guid: f0e02cafaf94f494180bf6305b087b11, type: 3}
+  _scissorsVisualBot: {fileID: 21300000, guid: bbe07660e85f049799a71d8126ca8827, type: 3}
+  _firstPickBot: {fileID: 1581558264}
+  _secondPickBot: {fileID: 1513640280}
+  _endOfGamePopup: {fileID: 1736228498}
+  _playerChoiceButtons:
   - {fileID: 864912573}
   - {fileID: 921992976}
   - {fileID: 651452957}
+  _betScreen: {fileID: 275374189}
 --- !u!114 &1736228498
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4361,13 +4362,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8adfe7877e6401cbc128e31b39a5ed4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  screen: {fileID: 6753094559879818564}
-  banner: {fileID: 987909950}
-  winSprite: {fileID: 509490168}
-  loseSprite: {fileID: 443820016}
-  drawSprite: {fileID: 278605873}
-  playAgain: {fileID: 1596090707}
-  manager: {fileID: 1736228497}
+  _popupScreen: {fileID: 6753094559879818564}
+  _bannerImage: {fileID: 987909950}
+  _winSprite: {fileID: 509490168}
+  _loseSprite: {fileID: 443820016}
+  _drawSprite: {fileID: 278605873}
+  _playAgainButton: {fileID: 1596090707}
+  _gameManager: {fileID: 1736228497}
 --- !u!1 &1829367961
 GameObject:
   m_ObjectHideFlags: 0
