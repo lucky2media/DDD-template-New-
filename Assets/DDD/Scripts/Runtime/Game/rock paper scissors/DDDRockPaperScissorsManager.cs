@@ -33,6 +33,7 @@ namespace DDD.Scripts.Game.RockPaperScissors
         [SerializeField] private EndOfGamePopup endOfGamePopup;
         [SerializeField] private PlayerChoiceButton[] playerChoiceButtons;
 
+        private Sprite blackHandsSprite;
         #endregion
 
         #region Private Fields
@@ -56,7 +57,7 @@ namespace DDD.Scripts.Game.RockPaperScissors
 
         private void Start()
         {
-            // Acquire network manager instance.
+            blackHandsSprite = firstPickPlayer.sprite;
             if (DDDNetworkManager.Instance is DDDNetworkManagerRockPeper netMgr)
             {
                 networkManager = netMgr;
@@ -68,13 +69,11 @@ namespace DDD.Scripts.Game.RockPaperScissors
             
             InitializeGame();
 
-            // Subscribe to player choice button clicks.
             foreach (var button in playerChoiceButtons)
             {
                 button.click += OnPlayerChoiceButtonClicked;
             }
 
-            // Initialize session with the backend.
             networkManager.CallInitRequest("sweeps", (initResponse) =>
             {
                 if (initResponse != null)
@@ -93,26 +92,20 @@ namespace DDD.Scripts.Game.RockPaperScissors
 
         #region Player Button Callback
 
-        /// <summary>
-        /// Called when a player choice button is clicked.
-        /// </summary>
+
         private void OnPlayerChoiceButtonClicked(Choice choice, bool isPlayer)
         {
-            // Hide the visual of the clicked choice.
             if (isPlayer)
             {
                 HidePlayerChoiceVisual(choice);
             }
-            // (For bot choices, you could add separate behavior if needed.)
         }
 
         #endregion
 
         #region Game Flow Methods
 
-        /// <summary>
-        /// Resets the game state and UI.
-        /// </summary>
+ 
         public void ResetGame()
         {
             InitializeGame();
@@ -302,6 +295,15 @@ namespace DDD.Scripts.Game.RockPaperScissors
 
         private void HideAllVisuals()
         {
+            firstPickPlayer.gameObject.SetActive(true);
+            secondPickPlayer.gameObject.SetActive(true);
+            firstPickBot.gameObject.SetActive(true);
+            secondPickBot.gameObject.SetActive(true);
+            firstPickPlayer.sprite = blackHandsSprite;
+            secondPickPlayer.sprite = blackHandsSprite;
+            firstPickBot.sprite = blackHandsSprite;
+            secondPickBot.sprite = blackHandsSprite;
+            return;
             firstPickPlayer.gameObject.SetActive(false);
             secondPickPlayer.gameObject.SetActive(false);
             firstPickBot.gameObject.SetActive(false);
