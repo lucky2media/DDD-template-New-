@@ -5,3 +5,10 @@ AssemblyDefinitionImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 267636
+  packageName: Best HTTP
+  packageVersion: 3.0.14
+  assetPath: Packages/com.tivadar.best.http/Runtime/com.Tivadar.Best.HTTP.asmdef
+  uploadId: 738644

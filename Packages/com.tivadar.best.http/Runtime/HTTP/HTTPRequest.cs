@@ -1,7 +1,3 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-
 using Best.HTTP.Cookies;
 using Best.HTTP.Hosts.Connections;
 using Best.HTTP.HostSetting;
@@ -13,6 +9,10 @@ using Best.HTTP.Response.Decompression;
 using Best.HTTP.Shared;
 using Best.HTTP.Shared.Extensions;
 using Best.HTTP.Shared.Logger;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Best.HTTP
 {
@@ -154,6 +154,7 @@ namespace Best.HTTP
                                                           HTTPMethods.Put.ToString().ToUpper(),
                                                           HTTPMethods.Delete.ToString().ToUpper(),
                                                           HTTPMethods.Patch.ToString().ToUpper(),
+                                                          HTTPMethods.Trace.ToString().ToUpper(),
                                                           HTTPMethods.Merge.ToString().ToUpper(),
                                                           HTTPMethods.Options.ToString().ToUpper(),
                                                           HTTPMethods.Connect.ToString().ToUpper(),
@@ -250,9 +251,11 @@ namespace Best.HTTP
         /// <summary>
         /// Current state of this request.
         /// </summary>
-        public HTTPRequestStates State {
+        public HTTPRequestStates State
+        {
             get { return this._state; }
-            internal set {
+            internal set
+            {
                 if (!HTTPUpdateDelegator.Instance.IsMainThread() && HTTPUpdateDelegator.Instance.CurrentThreadingMode == ThreadingMode.UnityUpdate)
                     HTTPManager.Logger.Error(nameof(HTTPRequest), $"State.Set({this._state} => {value}) isn't called on the main thread({HTTPUpdateDelegator.Instance.MainThreadId})!", this.Context);
 
@@ -308,7 +311,7 @@ namespace Best.HTTP
         /// </summary>
         /// <param name="url">The URL of the request.</param>
         public HTTPRequest(string url)
-            :this(new Uri(url)) {}
+            : this(new Uri(url)) { }
 
         /// <summary>
         /// Creates an HTTP GET request with the specified URL and registers a callback function to be called
@@ -490,7 +493,7 @@ namespace Best.HTTP
             RemoveHeader("Cookie");
 
             RemoveHeader("Accept-Encoding");
-            
+
             RemoveHeader("Content-Length");
         }
 

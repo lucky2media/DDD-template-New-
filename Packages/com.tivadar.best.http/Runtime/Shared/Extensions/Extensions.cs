@@ -1,14 +1,15 @@
+using Best.HTTP.Shared.PlatformSupport.Memory;
+using Best.HTTP.Shared.PlatformSupport.Text;
+using Best.HTTP.Shared.Streams;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Best.HTTP.Shared.PlatformSupport.Text;
+
+using static Best.HTTP.Hosts.Connections.HTTP1.Constants;
 
 using Cryptography = System.Security.Cryptography;
-
-using Best.HTTP.Shared.Streams;
-using Best.HTTP.Shared.PlatformSupport.Memory;
-using static Best.HTTP.Hosts.Connections.HTTP1.Constants;
 
 namespace Best.HTTP.Shared.Extensions
 {
@@ -289,7 +290,7 @@ namespace Best.HTTP.Shared.Extensions
             {
                 System.Net.IPAddress ip;
                 if (System.Net.IPAddress.TryParse(address, out ip))
-                  return ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6;
+                    return ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6;
             }
 
             return false;
@@ -311,15 +312,10 @@ namespace Best.HTTP.Shared.Extensions
             if (str == null)
                 return defaultValue;
 
-            try
-            {
-                DateTime.TryParse(str, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out defaultValue);
-                return defaultValue;
-            }
-            catch
-            {
-                return defaultValue;
-            }
+            if (DateTime.TryParse(str, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var value))
+                return value;
+
+            return defaultValue;
         }
 
         public static string ToStrOrEmpty(this string str)
@@ -357,7 +353,8 @@ namespace Best.HTTP.Shared.Extensions
 
         public static string CalculateMD5Hash(this BufferSegment input)
         {
-            using (var md5 = Cryptography.MD5.Create()) {
+            using (var md5 = Cryptography.MD5.Create())
+            {
                 var hash = md5.ComputeHash(input.Data, input.Offset, input.Count);
                 var sb = StringBuilderPool.Get(hash.Length); //new StringBuilder(hash.Length);
                 for (int i = 0; i < hash.Length; ++i)

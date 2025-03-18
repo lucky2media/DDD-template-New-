@@ -196,7 +196,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
         public void OnCancellationRequested()
         {
             if (HTTPManager.Logger.IsDiagnostic)
-            HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnCancellationRequested)}()", this._parameters.context);
+                HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnCancellationRequested)}()", this._parameters.context);
 
             this._streamer?.Dispose();
         }
@@ -204,7 +204,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
         private void OnDNSCacheQueryFinished(DNSQueryParameters dnsParameters, DNSQueryResult result)
         {
             if (HTTPManager.Logger.IsDiagnostic)
-            HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnDNSCacheQueryFinished)}({dnsParameters}, {result})", this._parameters.context);
+                HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnDNSCacheQueryFinished)}({dnsParameters}, {result})", this._parameters.context);
 
             if (!this._peer.MustStopAdvancingToNextStep(this, NegotiationSteps.DNSQuery, NegotiationSteps.TCPRace, result.Error))
             {
@@ -225,7 +225,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
         private void OnTCPRaceFinished(TCPRaceParameters parameters, TCPRaceResult raceResult)
         {
             if (HTTPManager.Logger.IsDiagnostic)
-            HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnTCPRaceFinished)}({parameters}, {raceResult})", this._parameters.context);
+                HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnTCPRaceFinished)}({parameters}, {raceResult})", this._parameters.context);
 
             NegotiationSteps nextStep = this._parameters.proxy != null ? NegotiationSteps.Proxy : (this._parameters.negotiateTLS ? NegotiationSteps.TLSNegotiation : NegotiationSteps.Finish);
 
@@ -278,7 +278,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
         private void OnProxyNegotiated(HTTP.Proxies.ProxyConnectParameters parameters)
         {
             if (HTTPManager.Logger.IsDiagnostic)
-            HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnProxyNegotiated)}({parameters})", this._parameters.context);
+                HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnProxyNegotiated)}({parameters})", this._parameters.context);
 
             NegotiationSteps nextStep = this._parameters.negotiateTLS ? NegotiationSteps.TLSNegotiation : NegotiationSteps.Finish;
 
@@ -289,7 +289,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
         private void OnProxyNegotiationFailed(HTTP.Proxies.ProxyConnectParameters parameters, Exception error, bool resendForAuthentication)
         {
             if (HTTPManager.Logger.IsDiagnostic)
-            HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnProxyNegotiationFailed)}({parameters}, {error}, {resendForAuthentication})", this._parameters.context);
+                HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnProxyNegotiationFailed)}({parameters}, {error}, {resendForAuthentication})", this._parameters.context);
 
             this._peer.EvaluateProxyNegotiationFailure(this, error, resendForAuthentication);
         }
@@ -303,7 +303,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
                 if (this._parameters.negotiateTLS)
                 {
                     if (HTTPManager.Logger.IsDiagnostic)
-                    HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(NegotiateTLS)}()", this._parameters.context);
+                        HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(NegotiateTLS)}()", this._parameters.context);
 
                     var handlerType = hostSettings.TLSSettings.TLSHandler;
                     switch (handlerType)
@@ -357,7 +357,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
                 else
                 {
                     if (HTTPManager.Logger.IsDiagnostic)
-                    HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(this._peer.OnNegotiationFinished)}()", this._parameters.context);
+                        HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(this._peer.OnNegotiationFinished)}()", this._parameters.context);
 
                     if (this._stream is not NonblockingTCPStream)
                     this._stream = new NonblockingTCPStream(this._streamer, true, this.Parameters.hostSettings.LowLevelConnectionSettings.ReadBufferSize);
@@ -373,7 +373,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
         private void OnFramework_TLSNegotiated(FrameworkTLSStream stream, TCPStreamer streamer, string alpn, Exception error)
         {
             if (HTTPManager.Logger.IsDiagnostic)
-            HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnFramework_TLSNegotiated)}(\"{alpn}\", {error})", this._parameters.context);
+                HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnFramework_TLSNegotiated)}(\"{alpn}\", {error})", this._parameters.context);
 
             this._stream = stream;
 
@@ -389,7 +389,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
             string alpn = tlsClient.GetNegotiatedApplicationProtocol();
 
             if (HTTPManager.Logger.IsDiagnostic)
-            HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnBC_TLSNegotiated)}(\"{alpn}\", {error})", this._parameters.context);
+                HTTPManager.Logger.Information(nameof(Negotiator), $"{nameof(OnBC_TLSNegotiated)}(\"{alpn}\", {error})", this._parameters.context);
 
             // set the stream early if we return because of PreprocessRequestState, Dispose wouldn't call stream's Dispose
             this._stream = stream;
@@ -417,8 +417,8 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
 
             try
             {
-            // data sending is buffered for all protocols, so when we put data into the socket we want to send them asap
-            socket.NoDelay = true;
+                // data sending is buffered for all protocols, so when we put data into the socket we want to send them asap
+                socket.NoDelay = true;
             }
             catch (Exception ex)
             {

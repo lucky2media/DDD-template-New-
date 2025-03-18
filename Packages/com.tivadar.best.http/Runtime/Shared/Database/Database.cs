@@ -1,12 +1,12 @@
+using Best.HTTP.Shared.Extensions;
+using Best.HTTP.Shared.PlatformSupport.Memory;
+using Best.HTTP.Shared.PlatformSupport.Threading;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-
-using Best.HTTP.Shared.Extensions;
-using Best.HTTP.Shared.PlatformSupport.Memory;
-using Best.HTTP.Shared.PlatformSupport.Threading;
 
 namespace Best.HTTP.Shared.Databases
 {
@@ -38,7 +38,7 @@ namespace Best.HTTP.Shared.Databases
         public MetadataServiceType MetadataService { get; private set; }
 
         protected DatabaseOptions Options { get; private set; }
-        protected IndexingServiceType IndexingService { get; private set; }        
+        protected IndexingServiceType IndexingService { get; private set; }
         protected DiskManager<ContentType> DiskManager { get; private set; }
 
         protected int isDirty = 0;
@@ -67,8 +67,8 @@ namespace Best.HTTP.Shared.Databases
                 options.DiskManager);
 
             using (var fileStream = HTTPManager.IOService.CreateFileStream(this.MetadataFileName, Best.HTTP.Shared.PlatformSupport.FileSystem.FileStreamModes.OpenReadWrite))
-                using (var stream = new BufferedStream(fileStream))
-                    this.MetadataService.LoadFrom(stream);
+            using (var stream = new BufferedStream(fileStream))
+                this.MetadataService.LoadFrom(stream);
         }
 
         public int Clear()
@@ -246,8 +246,13 @@ namespace Best.HTTP.Shared.Databases
         public void Dispose()
         {
             Save();
+            HTTPManager.Heartbeats.Unsubscribe(this);
+
             this.DiskManager.Dispose();
+            this.DiskManager = null;
+
             this.rwlock.Dispose();
+            this.rwlock = null;
 
             GC.SuppressFinalize(this);
         }

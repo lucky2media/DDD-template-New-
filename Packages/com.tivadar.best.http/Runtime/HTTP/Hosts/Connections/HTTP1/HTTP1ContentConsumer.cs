@@ -1,7 +1,4 @@
 #if !UNITY_WEBGL || UNITY_EDITOR
-using System;
-using System.Threading;
-
 using Best.HTTP.Request.Timings;
 using Best.HTTP.Request.Upload;
 using Best.HTTP.Response;
@@ -12,6 +9,9 @@ using Best.HTTP.Shared.PlatformSupport.Memory;
 using Best.HTTP.Shared.PlatformSupport.Network.Tcp;
 using Best.HTTP.Shared.PlatformSupport.Threading;
 using Best.HTTP.Shared.Streams;
+
+using System;
+using System.Threading;
 
 using static Best.HTTP.Hosts.Connections.HTTP1.Constants;
 
@@ -43,7 +43,15 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
         private readonly HTTPOverTCPConnection conn;
         private PeekableHTTP1Response _response;
         private int _isAlreadyProcessingContent;
-        private AutoResetEvent _are = new AutoResetEvent(false);
+        private WriteOnlyBufferedStream _upStream;
+
+        private int _isSendingContent;
+        private int _hasMoreData;
+        private bool _isContentSendingFinished;
+        private int _acceptContentSignals;
+
+        // Initialize the progress report variables
+        private long _uploaded = 0;
 
         public HTTP1ContentConsumer(HTTPOverTCPConnection conn)
         {
@@ -55,7 +63,7 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
         {
             HTTPManager.Logger.Information(nameof(HTTP1ContentConsumer), "Started processing request", this.Context);
 
-            ThreadedRunner.SetThreadName("Best.HTTP1 Write");
+            //ThreadedRunner.SetThreadName("Best.HTTP1 Write");
 
             try
             {
@@ -150,37 +158,42 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
 
                 bufferStream.WriteArray(EOL);
 
-                // Send remaining data to the wire
-                bufferStream.Flush();
+                // Send body content
+                if (this.conn.CurrentRequest.UploadSettings.UploadStream is Request.Upload.UploadStreamBase upStream)
+                    upStream.BeforeSendBody(this.conn.CurrentRequest, this);
 
-                this.conn.CurrentRequest.Timing.StartNext(TimingEventNames.Waiting_TTFB);
+                Interlocked.Exchange(ref this._isSendingContent, 1);
+                Interlocked.Exchange(ref this._acceptContentSignals, 1);
+
+                SendContent(bufferStream);
             } // bufferStream.Dispose
-
-            //if (!request.UploadSettings.Expect100Continue)
-            SendContent();
 
             HTTPManager.Logger.Information("HTTPRequest", "Sent out '" + requestLine + "'", this.Context);
         }
 
-        void SendContent()
+        void SendContent(WriteOnlyBufferedStream streamToSend)
         {
-            System.IO.Stream uploadStream = this.conn.CurrentRequest.UploadSettings.UploadStream;
-            if (uploadStream != null)
+            Interlocked.Exchange(ref this._hasMoreData, 0);
+
+            var request = this.conn.CurrentRequest;
+            System.IO.Stream uploadStream = request.UploadSettings.UploadStream;
+
+            try
             {
-                try
+                if (uploadStream == null)
                 {
-                    if (uploadStream is Request.Upload.UploadStreamBase upStream)
-                        upStream.BeforeSendBody(this.conn.CurrentRequest, this);
-
-                    using WriteOnlyBufferedStream bufferStream = new WriteOnlyBufferedStream(this.conn.TopStream,
-                            (int)(this.conn.CurrentRequest.UploadSettings.UploadChunkSize * 1.5f),
-                            this.conn.CurrentRequest.Context);
-
+                    this._isContentSendingFinished = true;
+                }
+                else
+                {
+                    if (streamToSend == null)
+                    {
+                        if (this._upStream == null)
+                            this._upStream = new WriteOnlyBufferedStream(this.conn.TopStream, (int)(request.UploadSettings.UploadChunkSize * 1.5f), request.Context);
+                        streamToSend = this._upStream;
+                    }
                     long uploadLength = uploadStream.Length;
                     bool isChunked = uploadLength == BodyLengths.UnknownWithChunkedTransferEncoding;
-
-                    // Initialize the progress report variables
-                    long Uploaded = 0;
 
                     // Upload buffer. First we will read the data into this buffer from the UploadStream, then write this buffer to our outStream
                     byte[] buffer = BufferPool.Get(this.conn.CurrentRequest.UploadSettings.UploadChunkSize, true);
@@ -188,39 +201,29 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
 
                     // How many bytes was read from the UploadStream
                     int count = uploadStream.Read(buffer, 0, buffer.Length);
-                    while (count != 0)
+                    while (count > 0)
                     {
-                        if (count <= 0)
-                        {
-                            this._are.WaitOne();
-                            count = uploadStream.Read(buffer, 0, buffer.Length);
-                            continue;
-                        }
-
                         if (isChunked)
                         {
                             var countBytes = count.ToString("X").GetASCIIBytes();
-                            bufferStream.WriteBufferSegment(countBytes);
-                            bufferStream.WriteArray(EOL);
+                            streamToSend.WriteBufferSegment(countBytes);
+                            streamToSend.WriteArray(EOL);
 
                             BufferPool.Release(countBytes);
                         }
 
                         // write out the buffer to the wire
-                        bufferStream.Write(buffer, 0, count);
+                        streamToSend.Write(buffer, 0, count);
 
                         // chunk trailing EOL
                         if (uploadLength < 0)
-                            bufferStream.WriteArray(EOL);
+                            streamToSend.WriteArray(EOL);
 
                         // update how many bytes are uploaded
-                        Uploaded += count;
-
-                        // Write to the wire
-                        bufferStream.Flush();
+                        _uploaded += count;
 
                         if (this.conn.CurrentRequest.UploadSettings.OnUploadProgress != null)
-                            RequestEventHelper.EnqueueRequestEvent(new RequestEventInfo(this.conn.CurrentRequest, RequestEvents.UploadProgress, Uploaded, uploadLength));
+                            RequestEventHelper.EnqueueRequestEvent(new RequestEventInfo(this.conn.CurrentRequest, RequestEvents.UploadProgress, _uploaded, uploadLength));
 
                         if (this.conn.CurrentRequest.IsCancellationRequested)
                             return;
@@ -228,25 +231,41 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
                         count = uploadStream.Read(buffer, 0, buffer.Length);
                     }
 
+                    this._isContentSendingFinished = count == UploadReadConstants.Completed;
+
                     // All data from the stream are sent, write the 'end' chunk if necessary
-                    if (isChunked)
+                    if (isChunked && this._isContentSendingFinished)
                     {
-                        byte[] noMoreChunkBytes = BufferPool.Get(1, true);
-                        noMoreChunkBytes[0] = (byte)'0';
-                        bufferStream.Write(noMoreChunkBytes, 0, 1);
-                        bufferStream.WriteArray(EOL);
-                        bufferStream.WriteArray(EOL);
+                        ReadOnlySpan<byte> bytes = stackalloc byte[] { (byte)'0' };
 
-                        BufferPool.Release(noMoreChunkBytes);
+                        streamToSend.Write(bytes);
+                        streamToSend.WriteArray(EOL);
+                        streamToSend.WriteArray(EOL);
                     }
-
-                    // Make sure all remaining data will be on the wire
-                    bufferStream.Flush();
                 }
-                finally
+            }
+            finally
+            {
+                // Make sure all remaining data will be on the wire
+                streamToSend?.Flush();
+
+                if (this._isContentSendingFinished)
                 {
+                    this._upStream?.Dispose();
+                    this._upStream = null;
                     if (this.conn.CurrentRequest.UploadSettings.DisposeStream)
-                        uploadStream.Dispose();
+                        uploadStream?.Dispose();
+
+                    this.conn.CurrentRequest.Timing.StartNext(TimingEventNames.Waiting_TTFB);
+
+                    Interlocked.Exchange(ref this._isSendingContent, 0);
+                }
+                else
+                {
+                    Interlocked.Exchange(ref this._isSendingContent, 0);
+
+                    if (this._hasMoreData > 0)
+                        (this as IThreadSignaler).SignalThread();
                 }
             }
         }
@@ -297,8 +316,7 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
                         FinishedProcessing(null);
                     else if (this._response.ReadState == PeekableHTTP1Response.PeekableReadState.WaitForContentSent)
                     {
-                        SendContent();
-                        this.conn.CurrentRequest.Timing.StartNext(TimingEventNames.Waiting_TTFB);
+                        (this as IThreadSignaler).SignalThread();
                     }
                 }
             }
@@ -312,14 +330,14 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
         {
             HTTPManager.Logger.Information(nameof(HTTP1ContentConsumer), $"OnConnectionClosed({this.ContentProvider?.Length}, {this._response?.ReadState})", this.Context);
 
-            if (this._response != null && 
-                this._response.ReadState == PeekableHTTP1Response.PeekableReadState.Content && 
+            if (this._response != null &&
+                this._response.ReadState == PeekableHTTP1Response.PeekableReadState.Content &&
                 this._response.DeliveryMode == PeekableHTTP1Response.ContentDeliveryMode.RawUnknownLength &&
                 "close".Equals(this._response.GetFirstHeaderValue("connection"), StringComparison.OrdinalIgnoreCase))
             {
                 FinishedProcessing(null);
             }
-            else if (this.ContentProvider.Length > 0 &&
+            else if (this.ContentProvider != null && this.ContentProvider.Length > 0 &&
                 this._response != null &&
                 this._response.ReadState == PeekableHTTP1Response.PeekableReadState.Content &&
                 this._response.DownStream != null)
@@ -486,11 +504,16 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
             }
             else if (resendRequest && requestState == HTTPRequestStates.Finished)
             {
+                (conn.TopStream as IPeekableContentProvider).SwitchIf(null, this.conn as IContentConsumer);
+
                 RequestEventHelper.EnqueueRequestEvent(new RequestEventInfo(req, RequestEvents.Resend));
                 ConnectionEventHelper.EnqueueConnectionEvent(new ConnectionEventInfo(this.conn, connectionState));
             }
             else
             {
+                if (resp == null || !resp.IsUpgraded)
+                    (conn.TopStream as IPeekableContentProvider).SwitchIf(null, this.conn as IContentConsumer);
+
                 // Otherwise set the request's then the connection's state
                 ConnectionHelper.EnqueueEvents(this.conn, connectionState, req, requestState, error);
             }
@@ -528,6 +551,29 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
             this.ShutdownType = type;
         }
 
+        void IThreadSignaler.SignalThread()
+        {
+            Interlocked.Exchange(ref this._hasMoreData, 1);
+
+            if (this._acceptContentSignals == 1 && Interlocked.CompareExchange(ref this._isSendingContent, 1, 0) == 0)
+                ThreadedRunner.RunShortLiving(SignalThreadHandler);
+        }
+
+        void SignalThreadHandler()
+        {
+            try
+            {
+                SendContent(null);
+            }
+            catch (Exception e)
+            {
+                if (this.ShutdownType == ShutdownTypes.Immediate)
+                    return;
+
+                FinishedProcessing(e);
+            }
+        }
+
         public void Dispose()
         {
             Dispose(true);
@@ -536,16 +582,8 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
 
         private void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                this._are.Dispose();
-                this._are = null;
-            }
-        }
-
-        void IThreadSignaler.SignalThread()
-        {
-            this._are?.Set();
+            this._upStream?.Dispose();
+            this._upStream = null;
         }
     }
 }

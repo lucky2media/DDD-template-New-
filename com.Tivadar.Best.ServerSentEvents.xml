@@ -93,9 +93,9 @@
             Gets the logging context for the current EventSource instance.
             </summary>
         </member>
-        <member name="P:Best.ServerSentEvents.EventSource.WithCredentials">
+        <member name="P:Best.ServerSentEvents.EventSource.InternalRequest">
             <summary>
-            Gets or sets a value indicating whether to send credentials like cookies and authorization headers with the request.
+            Gets the internal <see cref="T:Best.HTTP.HTTPRequest"/> object used by the EventSource for communication.
             </summary>
         </member>
         <member name="E:Best.ServerSentEvents.EventSource.OnOpen">
@@ -113,6 +113,16 @@
             Called when an error occurs.
             </summary>
         </member>
+        <member name="E:Best.ServerSentEvents.EventSource.OnRetry">
+            <summary>
+            Called when the EventSource will try to do a retry attempt. If this function returns with false, it will cancel the attempt.
+            </summary>
+        </member>
+        <member name="E:Best.ServerSentEvents.EventSource.OnComment">
+            <summary>
+            This event is called for comments received from the server.
+            </summary>
+        </member>
         <member name="E:Best.ServerSentEvents.EventSource.OnClosed">
             <summary>
             Called when the EventSource object closed.
@@ -126,6 +136,36 @@
         <member name="F:Best.ServerSentEvents.EventSource.EventTable">
             <summary>
             A dictionary to store eventName => delegate mapping.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.RetryCount">
+            <summary>
+            Number of retry attempts made.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.RetryCalled">
+            <summary>
+            When we called the Retry function. We will delay the Open call from here.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.LineBuffer">
+            <summary>
+            Buffer for the read data.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.LineBufferPos">
+            <summary>
+            Buffer position.
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.CurrentMessage">
+            <summary>
+            The currently receiving and parsing message
+            </summary>
+        </member>
+        <member name="F:Best.ServerSentEvents.EventSource.CompletedMessages">
+            <summary>
+            Completed messages that waiting to be dispatched
             </summary>
         </member>
         <member name="M:Best.ServerSentEvents.EventSource.Open">

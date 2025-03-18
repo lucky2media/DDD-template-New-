@@ -226,7 +226,7 @@ namespace Best.HTTP.Proxies.Implementations
                             // Read method selection result
 
                             //count = stream.Read(buffer, 0, buffer.Length);
-                            var buffer = BufferPool.Get(BufferPool.MinBufferSize, true);
+                            var buffer = BufferPool.Get(BufferPool.MIN_BUFFER_SIZE, true);
                             int count = this.ContentProvider.Read(buffer, 0, buffer.Length);
 
                             if (HTTPManager.Logger.IsDiagnostic)

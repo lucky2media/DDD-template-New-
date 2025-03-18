@@ -1,13 +1,13 @@
 #if !UNITY_WEBGL || UNITY_EDITOR
-using System;
-using System.Collections.Generic;
-using System.Threading;
-
 using Best.HTTP.Shared;
 using Best.HTTP.Shared.Extensions;
 using Best.HTTP.Shared.PlatformSupport.Memory;
 using Best.HTTP.Shared.PlatformSupport.Network.Tcp;
 using Best.HTTP.Shared.Streams;
+
+using System;
+using System.Collections.Generic;
+using System.Threading;
 
 using static Best.HTTP.Hosts.Connections.HTTP1.Constants;
 
@@ -215,7 +215,7 @@ namespace Best.HTTP.Proxies
                 case PeekableReadState.Finished:
                     //(this._parameters.stream as IPeekableContentProvider).Consumer = null;
                     this.ContentProvider.Unbind();
-                    if (this.StatusCode == 200)
+                    if (this.StatusCode == 200 || this.StatusCode == 407)
                     {
                         CallFinished(null);
                     }
@@ -391,7 +391,8 @@ namespace Best.HTTP.Proxies
 
                     if (IsNewLinePresent(peekable))
                     {
-                        HTTPResponse.ReadTo(peekable, LF);
+                        BufferPool.Release(HTTPResponse.ReadToAsByte(peekable, LF));
+
                         goto case ReadChunkedStates.ReadChunkLength;
                     }
                     break;

@@ -9,3 +9,10 @@ MonoImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 267636
+  packageName: Best HTTP
+  packageVersion: 3.0.14
+  assetPath: Packages/com.tivadar.best.http/Runtime/3rdParty/BouncyCastle/crypto/digests/SM3Digest.cs
+  uploadId: 738644

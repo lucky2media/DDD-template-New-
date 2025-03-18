@@ -12,6 +12,8 @@ using UnityEngine;
 using Best.HTTP.Shared.PlatformSupport.Text;
 using System.Net;
 using System.Net.Sockets;
+using Best.HTTP.Shared.PlatformSupport.Network.Tcp;
+using Best.HTTP.Shared.PlatformSupport.Threading;
 
 namespace Best.HTTP.Shared.PlatformSupport.Network.DNS.Cache
 {
@@ -313,7 +315,8 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.DNS.Cache
                     try
                     {
                         var result = new DNSQueryResult(parameters.Hostname, addresses, null);
-                        parameters.Callback?.Invoke(parameters, result);
+
+                        ThreadedRunner.RunShortLiving<DNSQueryParameters, DNSQueryResult>((par, res) => par?.Callback?.Invoke(par, res), parameters, result);
                     }
                     catch (Exception ex)
                     {

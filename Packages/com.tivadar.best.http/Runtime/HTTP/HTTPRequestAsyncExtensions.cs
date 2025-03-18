@@ -1,9 +1,8 @@
+using Best.HTTP.Shared;
+
 using System;
-using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Best.HTTP.Shared;
 
 using UnityEngine;
 
@@ -39,7 +38,7 @@ namespace Best.HTTP
         }
 
         public AsyncHTTPException(int statusCode, string message, string content)
-            :base(message)
+            : base(message)
         {
             this.StatusCode = statusCode;
             this.Content = content;
@@ -83,15 +82,22 @@ namespace Best.HTTP
                     case HTTPRequestStates.Finished:
                         if (resp.IsSuccess)
                         {
-                            var bundleLoadOp = AssetBundle.LoadFromMemoryAsync(resp.Data);
+                            try
+                            {
+                                var bundleLoadOp = AssetBundle.LoadFromMemoryAsync(resp.Data);
 
 #if !UNITY_2023_1_OR_NEWER
-                            HTTPUpdateDelegator.Instance.StartCoroutine(BundleLoader(bundleLoadOp, tcs));
+                                HTTPUpdateDelegator.Instance.StartCoroutine(BundleLoader(bundleLoadOp, tcs));
 #else
-                            await Awaitable.FromAsyncOperation(bundleLoadOp);
+                                await Awaitable.FromAsyncOperation(bundleLoadOp, token);
 
-                            tcs.TrySetResult(bundleLoadOp.assetBundle);
+                                tcs.TrySetResult(bundleLoadOp.assetBundle);
 #endif
+                            }
+                            catch (Exception ex)
+                            {
+                                tcs.TrySetException(ex);
+                            }
                         }
                         else
                             GenericResponseHandler<AssetBundle>(req, resp, tcs);
@@ -106,9 +112,9 @@ namespace Best.HTTP
 
 #if !UNITY_2023_1_OR_NEWER
 #if WITH_UNITASK
-        static IEnumerator BundleLoader(AssetBundleCreateRequest req, UniTaskCompletionSource<AssetBundle> tcs)
+        static System.Collections.IEnumerator BundleLoader(AssetBundleCreateRequest req, UniTaskCompletionSource<AssetBundle> tcs)
 #else
-        static IEnumerator BundleLoader(AssetBundleCreateRequest req, TaskCompletionSource<AssetBundle> tcs)
+        static System.Collections.IEnumerator BundleLoader(AssetBundleCreateRequest req, TaskCompletionSource<AssetBundle> tcs)
 #endif
         {
             yield return req;
@@ -236,7 +242,7 @@ namespace Best.HTTP
 #if WITH_UNITASK
         public static UniTask<byte[]> GetRawDataAsync(this HTTPRequest request, CancellationToken token = default)
 #else
-        public static Task<byte[]> GetRawDataAsync(this HTTPRequest request, CancellationToken token =  default)
+        public static Task<byte[]> GetRawDataAsync(this HTTPRequest request, CancellationToken token = default)
 #endif
         {
             return CreateTask<byte[]>(request, token, (req, resp, tcs) =>

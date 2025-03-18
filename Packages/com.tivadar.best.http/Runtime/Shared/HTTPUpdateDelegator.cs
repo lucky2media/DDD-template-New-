@@ -1,6 +1,6 @@
-using System.Threading;
-
 using Best.HTTP.Shared.PlatformSupport.Threading;
+
+using System.Threading;
 
 using UnityEngine;
 
@@ -121,7 +121,7 @@ namespace Best.HTTP.Shared
                     {
                         go = new GameObject("HTTP Update Delegator");
                         go.hideFlags = HideFlags.HideAndDontSave;
-                        
+
                         instance = go.AddComponent<HTTPUpdateDelegator>();
                     }
                     IsCreated = true;
@@ -152,7 +152,7 @@ namespace Best.HTTP.Shared
             return instance;
         }
 
-        private void Setup()
+        public void Setup()
         {
             if (isSetupCalled)
                 return;

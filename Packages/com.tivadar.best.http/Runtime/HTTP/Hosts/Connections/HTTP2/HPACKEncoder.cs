@@ -1,15 +1,15 @@
 #if (!UNITY_WEBGL || UNITY_EDITOR) && !BESTHTTP_DISABLE_ALTERNATE_SSL
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
 using Best.HTTP.Shared;
 using Best.HTTP.Shared.Extensions;
 using Best.HTTP.Shared.Logger;
 using Best.HTTP.Shared.PlatformSupport.Memory;
 using Best.HTTP.Shared.Streams;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace Best.HTTP.Hosts.Connections.HTTP2
 {
@@ -72,7 +72,8 @@ namespace Best.HTTP.Hosts.Connections.HTTP2
                         (header.Equals("te", StringComparison.OrdinalIgnoreCase) && !values.Contains("trailers") && values.Count <= 1) ||
                         header.Equals("host", StringComparison.OrdinalIgnoreCase) ||
                         header.Equals("keep-alive", StringComparison.OrdinalIgnoreCase) ||
-                        header.StartsWith("proxy-", StringComparison.OrdinalIgnoreCase))
+                        header.StartsWith("proxy-", StringComparison.OrdinalIgnoreCase) ||
+                        (header.Equals("content-length", StringComparison.OrdinalIgnoreCase) && values.Count == 1 && int.TryParse(values[0], out int contentLength) && contentLength <= 0))
                         return;
 
                     //if (!hasBody)
@@ -153,7 +154,8 @@ namespace Best.HTTP.Hosts.Connections.HTTP2
                         this.responseTable.Add(header);
                         to.Add(header);
                     }
-                } else if (BufferHelper.ReadValue(firstDataByte, 0, 3) == 0)
+                }
+                else if (BufferHelper.ReadValue(firstDataByte, 0, 3) == 0)
                 {
                     // https://http2.github.io/http2-spec/compression.html#literal.header.without.indexing
 
@@ -384,9 +386,9 @@ namespace Best.HTTP.Hosts.Connections.HTTP2
                 HTTP2FrameHeaderAndPayload frameHeader = new HTTP2FrameHeaderAndPayload();
                 frameHeader.Type = HTTP2FrameTypes.HEADERS;
                 frameHeader.StreamId = streamId;
-                
+
                 frameHeader.Payload = dataToSend.AsBuffer((int)maxFrameSize);
-                frameHeader.DontUseMemPool = true;                
+                frameHeader.DontUseMemPool = true;
 
                 if (!hasBody)
                     frameHeader.Flags = (byte)(HTTP2HeadersFlags.END_STREAM);
@@ -401,7 +403,7 @@ namespace Best.HTTP.Hosts.Connections.HTTP2
                     frameHeader.StreamId = streamId;
 
                     frameHeader.Payload = dataToSend.AsBuffer((int)offset, (int)maxFrameSize);
-                    
+
                     offset += maxFrameSize;
 
                     if (offset >= payloadLength)

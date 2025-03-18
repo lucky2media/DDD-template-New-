@@ -1,90 +1,24 @@
+#if BESTHTTP_ENABLE_BUFFERPOOL_DOUBLE_RELEASE_CHECKER
+using Best.HTTP.Shared.Extensions;
+#endif
+using Best.HTTP.Shared.Logger;
+
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
-using System.Runtime.CompilerServices;
-using Best.HTTP.Shared.Logger;
-using System.Collections.Concurrent;
+using Unity.Burst;
 
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
+using static Unity.Burst.Intrinsics.X86.Bmi1;
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
 using System.Linq;
 #endif
 
 namespace Best.HTTP.Shared.PlatformSupport.Memory
 {
-    /// <summary>
-    /// Light-weight user-mode lock for code blocks that has rare contentions and doesn't take a long time to finish.
-    /// </summary>
-    internal sealed class UserModeLock
-    {
-        private int _locked = 0;
-
-        public void Acquire()
-        {
-            SpinWait spinWait = new SpinWait();
-            while (Interlocked.CompareExchange(ref _locked, 1, 0) != 0)
-                spinWait.SpinOnce();
-        }
-
-        public bool TryAcquire()
-        {
-            SpinWait spinWait = new SpinWait();
-            while (Interlocked.CompareExchange(ref _locked, 1, 0) != 0)
-            {
-                if (spinWait.NextSpinWillYield)
-                    return false;
-                spinWait.SpinOnce();
-            }
-
-            return true;
-        }
-
-        public void Release()
-        {
-            Interlocked.Exchange(ref _locked, 0);
-        }
-    }
-
-#if BESTHTTP_PROFILE
-    public struct BufferStats
-    {
-        public long Size;
-        public int Count;
-    }
-
-    public struct BufferPoolStats
-    {
-        public long GetBuffers;
-        public long ReleaseBuffers;
-        public long PoolSize;
-        public long MaxPoolSize;
-        public long MinBufferSize;
-        public long MaxBufferSize;
-
-        public long Borrowed;
-        public long ArrayAllocations;
-
-        public int FreeBufferCount;
-        public List<BufferStats> FreeBufferStats;
-
-        public TimeSpan NextMaintenance;
-    }
-
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
-    public readonly struct BorrowedBuffer
-    {
-        public readonly string StackTrace;
-        public readonly LoggingContext Context;
-
-        public BorrowedBuffer(string stackTrace, LoggingContext context)
-        {
-            this.StackTrace = stackTrace;
-            this.Context = context;
-        }
-    }
-#endif
-#endif
-
     /// <summary>
     /// The BufferPool is a foundational element of the Best HTTP package, aiming to reduce dynamic memory allocation overheads by reusing byte arrays. The concept is elegantly simple: rather than allocating and deallocating memory for every requirement, byte arrays can be "borrowed" and "returned" within this pool. Once returned, these arrays are retained for subsequent use, minimizing repetitive memory operations.
     /// <para>While the BufferPool is housed within the Best HTTP package, its benefits are not limited to just HTTP operations. All protocols and packages integrated with or built upon the Best HTTP package utilize and benefit from the BufferPool. This ensures that memory is used efficiently and performance remains optimal across all integrated components.</para>
@@ -92,6 +26,17 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
     [Best.HTTP.Shared.PlatformSupport.IL2CPP.Il2CppEagerStaticClassConstructionAttribute]
     public static class BufferPool
     {
+        /// <summary>
+        /// Specifies the minimum buffer size that will be allocated. If a request is made for a size smaller than this and canBeLarger is <c>true</c>, 
+        /// this size will be used.
+        /// </summary>
+        public const long MIN_BUFFER_SIZE = 512;
+
+        /// <summary>
+        /// Specifies the maximum size of a buffer that the system will consider storing back into the pool.
+        /// </summary>
+        public const long MAX_BUFFER_SIZE = 32 * 1024 * 1024;
+
         /// <summary>
         /// Represents an empty byte array that can be returned for zero-length requests.
         /// </summary>
@@ -101,7 +46,8 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
         /// Gets or sets a value indicating whether the buffer pooling mechanism is enabled or disabled.
         /// Disabling will also clear all stored entries.
         /// </summary>
-        public static bool IsEnabled {
+        public static bool IsEnabled
+        {
             get { return _isEnabled; }
             set
             {
@@ -115,45 +61,24 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
         private static volatile bool _isEnabled = true;
 
         /// <summary>
-        /// Specifies the duration after which buffer entries, once released back to the pool, are deemed old and will be
-        /// considered for removal in the next maintenance cycle.
-        /// </summary>
-        public static TimeSpan RemoveOlderThan = TimeSpan.FromSeconds(30);
-
-        /// <summary>
         /// Specifies how frequently the maintenance cycle should run to manage old buffers.
         /// </summary>
-        public static TimeSpan RunMaintenanceEvery = TimeSpan.FromSeconds(10);
-
-        /// <summary>
-        /// Specifies the minimum buffer size that will be allocated. If a request is made for a size smaller than this and canBeLarger is <c>true</c>, 
-        /// this size will be used.
-        /// </summary>
-        public static long MinBufferSize = 32;
-
-        /// <summary>
-        /// Specifies the maximum size of a buffer that the system will consider storing back into the pool.
-        /// </summary>
-        public static long MaxBufferSize = long.MaxValue;
+        public static TimeSpan RunMaintenanceEvery = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// Specifies the maximum total size of all stored buffers. When the buffer reach this threshold, new releases will be declined.
         /// </summary>
-        public static long MaxPoolSize = 30 * 1024 * 1024;
+        public static long MaxPoolSize = 100 * 1024 * 1024;
 
+        public static long MinBufferSize => MIN_BUFFER_SIZE;
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BUFFER_STEALING
         /// <summary>
-        /// Indicates whether to remove buffer stores that don't hold any buffers from the free list.
+        /// Index threshold that getting a larger buffer is allowed in.
         /// </summary>
-        public static bool RemoveEmptyLists = false;
+        public static int MaxIndexThreshold = 3;
+#endif
 
-        /// <summary>
-        /// If set to <c>true</c>, and a byte array is released back to the pool more than once, an error will be logged.
-        /// </summary>
-        /// <remarks>Error checking is expensive and has a very large overhead! Turn it on with caution!</remarks>
-        public static bool IsDoubleReleaseCheckEnabled = false;
-
-        // It must be sorted by buffer size!
-        private readonly static List<BufferStore> FreeBuffers = new List<BufferStore>();
         private static DateTime lastMaintenance = DateTime.MinValue;
 
         // Statistics
@@ -163,25 +88,32 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
         private static long Borrowed = 0;
         private static long ArrayAllocations = 0;
 
-#if BESTHTTP_PROFILE && BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
-        private static Dictionary<byte[], BorrowedBuffer> BorrowedBuffers = new Dictionary<byte[], BorrowedBuffer>();
+        private static readonly Bucket[] _buckets;
+        private static readonly int firstIdx;
+        private static readonly int lastIdx;
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
+        private static ConditionalWeakTable<byte[], Tracker> _trackers = new ConditionalWeakTable<byte[], Tracker>();
 #endif
 
-        //private readonly static ReaderWriterLockSlim rwLock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
-        private readonly static UserModeLock _lock = new UserModeLock();
+#if BESTHTTP_ENABLE_BUFFERPOOL_DOUBLE_RELEASE_CHECKER
+        private static ConcurrentDictionary<byte[], (byte[] buffer, string stackTrace)> _doubleReleaseTracker = new ConcurrentDictionary<byte[], (byte[] buffer, string stackTrace)>();
+#endif
 
         static BufferPool()
         {
-#if UNITY_EDITOR
-            IsDoubleReleaseCheckEnabled = true;
-#else
-            IsDoubleReleaseCheckEnabled = false;
-#endif
-
 #if UNITY_ANDROID || UNITY_IOS
             UnityEngine.Application.lowMemory -= OnLowMemory;
             UnityEngine.Application.lowMemory += OnLowMemory;
 #endif
+
+            firstIdx = GetIdx(BufferPool.MIN_BUFFER_SIZE);
+            lastIdx = GetIdx(BufferPool.MAX_BUFFER_SIZE);
+
+            _buckets = new Bucket[(lastIdx - firstIdx) + 1];
+
+            for (int i = 0; i < _buckets.Length; i++)
+                _buckets[i] = new Bucket((int)(MIN_BUFFER_SIZE << i));
         }
 
 #if UNITY_EDITOR
@@ -195,7 +127,9 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
             Borrowed = 0;
             ArrayAllocations = 0;
 
-            FreeBuffers.Clear();
+            for (int i = 0; i < _buckets.Length; i++)
+                _buckets[i] = new Bucket((int)(MIN_BUFFER_SIZE << i));
+
             lastMaintenance = DateTime.MinValue;
 
 #if UNITY_ANDROID || UNITY_IOS
@@ -203,8 +137,12 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
             UnityEngine.Application.lowMemory += OnLowMemory;
 #endif
 
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
-            BorrowedBuffers.Clear();
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
+            ClearTrackers();
+#endif
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_DOUBLE_RELEASE_CHECKER
+            _doubleReleaseTracker.Clear();
 #endif
         }
 #endif
@@ -214,6 +152,15 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
         {
             HTTPManager.Logger.Warning(nameof(BufferPool), nameof(OnLowMemory));
 
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
+            ClearTrackers();
+#endif
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_DOUBLE_RELEASE_CHECKER
+            _doubleReleaseTracker.Clear();
+#endif
+
+            // Drop all buffers
             Clear();
         }
 #endif
@@ -236,64 +183,63 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
             if (size == 0)
                 return BufferPool.NoData;
 
-            if (canBeLarger)
-            {
-                if (size < MinBufferSize)
-                    size = MinBufferSize;
-                else if (!IsPowerOfTwo(size))
-                    size = NextPowerOf2(size);
-            }
-            else
-            {
-                if (size < MinBufferSize)
-                    return new byte[size];
-            }
+            if (size > BufferPool.MAX_BUFFER_SIZE)
+                return new byte[size];
 
-            if (FreeBuffers.Count == 0)
+            if (size < BufferPool.MIN_BUFFER_SIZE)
+                size = BufferPool.MIN_BUFFER_SIZE;
+            else if (!BufferPool.IsPowerOfTwo(size))
+                size = BufferPool.NextPowerOf2(size);
+
+            Interlocked.Add(ref Borrowed, size);
+
+            int idx = GetIdx(size >> firstIdx);
+
+            var buckets = _buckets;
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BUFFER_STEALING
+            int maxIdx = idx + MaxIndexThreshold;
+
+            while (idx < buckets.Length && idx <= maxIdx)
+#else
+            if (idx < buckets.Length)
+#endif
             {
-                Interlocked.Add(ref Borrowed, size);
-                Interlocked.Increment(ref ArrayAllocations);
+                ref Bucket bucket = ref buckets[idx];
+                var item = bucket.FastItem;
 
-                var result = new byte[size];
+                if ((item != null && Interlocked.CompareExchange(ref bucket.FastItem, null, item) == item) ||
+                    bucket.Items.TryPop(out item))
+                {
+                    Interlocked.Increment(ref GetBuffers);
+                    Interlocked.Add(ref PoolSize, -size);
 
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
-                lock (FreeBuffers)
-                    BorrowedBuffers.Add(result, new BorrowedBuffer(ProcessStackTrace(Environment.StackTrace), context));
+                    UpdateMinCount(ref bucket, 0);
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
+                    _trackers.Add(item, new Tracker(context));
 #endif
 
-                return result;
-            }
-
-            BufferDesc bufferDesc = FindFreeBuffer(size, canBeLarger);
-
-            if (bufferDesc.buffer == null)
-            {
-                Interlocked.Add(ref Borrowed, size);
-                Interlocked.Increment(ref ArrayAllocations);
-
-                var result = new byte[size];
-
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
-                lock (FreeBuffers)
-                    BorrowedBuffers.Add(result, new BorrowedBuffer(ProcessStackTrace(Environment.StackTrace), context));
+#if BESTHTTP_ENABLE_BUFFERPOOL_DOUBLE_RELEASE_CHECKER
+                    _doubleReleaseTracker.Remove(item, out var _);
 #endif
 
-                return result;
-            }
-            else
-            {
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
-                lock (FreeBuffers)
-                    BorrowedBuffers.Add(bufferDesc.buffer, new BorrowedBuffer(ProcessStackTrace(Environment.StackTrace), context));
+                    return item;
+                }
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BUFFER_STEALING
+                idx++;
 #endif
-
-                Interlocked.Increment(ref GetBuffers);
             }
 
-            Interlocked.Add(ref Borrowed, bufferDesc.buffer.Length);
-            Interlocked.Add(ref PoolSize, -bufferDesc.buffer.Length);
+            Interlocked.Increment(ref ArrayAllocations);
 
-            return bufferDesc.buffer;
+            var result = new byte[size];
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
+            _trackers.Add(result, new Tracker(context));
+#endif
+            return result;
         }
 
         /// <summary>
@@ -306,17 +252,8 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
             if (!_isEnabled || segments == null)
                 return;
 
-            //using var _ = new WriteLock(rwLock);
-            _lock.Acquire();
-            try
-            {
-                while (segments.TryDequeue(out var segment))
-                    Release(segment, false);
-            }
-            finally
-            {
-                _lock.Release();
-            }
+            while (segments.TryDequeue(out var segment))
+                Release(segment);
         }
 
         /// <summary>
@@ -329,71 +266,68 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
             if (!_isEnabled || segments == null)
                 return;
 
-            //using var _ = new WriteLock(rwLock);
-            _lock.Acquire();
-            try
-            {
-                while (segments.Count > 0)
-                {
-                    var segment = segments[0];
-
-                    Release(segment, false);
-
-                    segments.RemoveAt(0);
-                }
-            }
-            finally
-            {
-                _lock.Release();
-            }
+            for (int i = 0; i < segments.Count; i++)
+                Release(segments[i]);
+            segments.Clear();
         }
 
         /// <summary>
         /// Releases a byte array back to the pool.
         /// </summary>
         /// <param name="buffer">Buffer to be released back to the pool.</param>
-        public static void Release(byte[] buffer) => Release(buffer, true);
-        
-        private static void Release(byte[] buffer, bool acquireLock)
+        public static void Release(byte[] buffer)
         {
             if (!_isEnabled || buffer == null)
                 return;
 
             int size = buffer.Length;
 
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
-            lock (FreeBuffers)
-                BorrowedBuffers.Remove(buffer);
-#endif
-
-            Interlocked.Add(ref Borrowed, -size);
-
-            if (size == 0 || size < MinBufferSize || size > MaxBufferSize)
+            if (size == 0 || size < MIN_BUFFER_SIZE || size > MAX_BUFFER_SIZE)
                 return;
 
             if (!IsPowerOfTwo(size))
                 return;
 
-            //using (new WriteLock(rwLock))
-            if (acquireLock)
-                _lock.Acquire();
-            try
+#if BESTHTTP_ENABLE_BUFFERPOOL_DOUBLE_RELEASE_CHECKER
+            if (_doubleReleaseTracker.TryGetValue(buffer, out var entry))
             {
-
-                var ps = Interlocked.Read(ref PoolSize);
-                if (ps + size > MaxPoolSize)
-                    return;
-
-                Interlocked.Add(ref PoolSize, size);
-
-                ReleaseBuffers++;
-
-                AddFreeBuffer(buffer);
+                HTTPManager.Logger.Error("BufferPool", $"Buffer already added to the pool! Previously added from: {ProcessStackTrace(entry.stackTrace)}. Buffer: {entry.buffer.AsBuffer()}");
+                return;
             }
-            finally
+            else
+                _doubleReleaseTracker.TryAdd(buffer, new(buffer, Environment.StackTrace));
+#endif
+
+            Interlocked.Add(ref Borrowed, -size);
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
+            if (_trackers.TryGetValue(buffer, out var tracker))
             {
-                if (acquireLock)
-                    _lock.Release();
+                _trackers.Remove(buffer);
+                tracker.Dispose();
+            }
+#endif
+
+            var ps = Interlocked.Read(ref PoolSize);
+            if (ps + size > MaxPoolSize)
+                return;
+
+            Interlocked.Add(ref PoolSize, size);
+            Interlocked.Increment(ref ReleaseBuffers);
+
+            int idx = GetIdx(size >> firstIdx);
+            var buckets = _buckets;
+            ref var bucket = ref buckets[idx];
+
+            if (Interlocked.CompareExchange(ref bucket.FastItem, buffer, null) != null)
+            {
+                bucket.Items.Push(buffer);
+
+                UpdateMinCount(ref bucket, 0);
+            }
+            else
+            {
+                UpdateMinCount(ref bucket, 1);
             }
         }
 
@@ -428,33 +362,25 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
             return buffer = newBuf;
         }
 
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
-        public static KeyValuePair<byte[], BorrowedBuffer>[] GetBorrowedBuffers()
-        {
-            lock (FreeBuffers)
-                return BorrowedBuffers.ToArray();
-        }
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
+        public static KeyValuePair<byte[], Tracker>[] GetBorrowedBuffers() => _trackers.ToArray();
 #endif
 
 #if BESTHTTP_PROFILE
         public static void GetStatistics(ref BufferPoolStats stats)
         {
             //using (new ReadLock(rwLock))
-            if (!_lock.TryAcquire())
-                return;
-            try
-            {
-                stats.GetBuffers = GetBuffers;
-                stats.ReleaseBuffers = ReleaseBuffers;
-                stats.PoolSize = PoolSize;
-                stats.MinBufferSize = MinBufferSize;
-                stats.MaxBufferSize = MaxBufferSize;
-                stats.MaxPoolSize = MaxPoolSize;
+            stats.GetBuffers = Interlocked.Read(ref GetBuffers);
+            stats.ReleaseBuffers = Interlocked.Read(ref ReleaseBuffers);
+            stats.PoolSize = Interlocked.Read(ref PoolSize);
+            stats.MinBufferSize = MIN_BUFFER_SIZE;
+            stats.MaxBufferSize = MAX_BUFFER_SIZE;
+            stats.MaxPoolSize = Interlocked.Read(ref MaxPoolSize);
 
-                stats.Borrowed = Borrowed;
-                stats.ArrayAllocations = ArrayAllocations;
+            stats.Borrowed = Interlocked.Read(ref Borrowed);
+            stats.ArrayAllocations = Interlocked.Read(ref ArrayAllocations);
 
-                stats.FreeBufferCount = FreeBuffers.Count;
+            /*stats.FreeBufferCount = FreeBuffers.Count;
                 if (stats.FreeBufferStats == null)
                     stats.FreeBufferStats = new List<BufferStats>(FreeBuffers.Count);
                 else
@@ -470,14 +396,9 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
                     bufferStats.Count = buffers.Count;
 
                     stats.FreeBufferStats.Add(bufferStats);
-                }
+            }*/
 
-                stats.NextMaintenance = (lastMaintenance + RunMaintenanceEvery) - DateTime.UtcNow;
-            }
-            finally
-            {
-                _lock.Release();
-            }
+            stats.NextMaintenance = (lastMaintenance + RunMaintenanceEvery) - DateTime.UtcNow;
         }
 #endif
 
@@ -486,18 +407,30 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
         /// </summary>
         public static void Clear()
         {
-            //using (new WriteLock(rwLock))
-            _lock.Acquire();
-            try
+            var buckets = _buckets;
+            for (int i = 0; i < _buckets.Length; ++i)
             {
-                FreeBuffers.Clear();
-                Interlocked.Exchange(ref PoolSize, 0);
+                ref Bucket bucket = ref buckets[i];
+                bucket.Items.Clear();
+                Interlocked.Exchange(ref bucket.FastItem, null);
             }
-            finally
-            {
-                _lock.Release();
-            }
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
+            ClearTrackers();
+#endif
+
+            Interlocked.Exchange(ref PoolSize, 0);
         }
+
+#if BESTHTTP_ENABLE_BUFFERPOOL_BORROW_CHECKER
+        private static void ClearTrackers()
+        {
+            var all = _trackers.ToArray();
+            foreach (var item in all)
+                _trackers.Remove(item.Key);
+            _trackers.Clear();
+        }
+#endif
 
         /// <summary>
         /// Internal method called by the plugin to remove old, non-used buffers.
@@ -507,55 +440,43 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
             DateTime now = DateTime.UtcNow;
             if (!_isEnabled || lastMaintenance + RunMaintenanceEvery > now)
                 return;
-            
-            DateTime olderThan = now - RemoveOlderThan;
-            //using (new WriteLock(rwLock))
-            if (!_lock.TryAcquire())
-                return;
 
             lastMaintenance = now;
-            try
+
+            var buckets = _buckets;
+            for (int i = 0; i < buckets.Length; ++i)
             {
-                for (int i = 0; i < FreeBuffers.Count; ++i)
+                ref Bucket bucket = ref buckets[i];
+
+                // Size of the bucket, already negated.
+                int bucketSize = -(int)(MIN_BUFFER_SIZE << i);
+                var remove = Interlocked.Exchange(ref bucket.MinCount, int.MaxValue);
+                int removed = 0;
+
+                for (int counter = 0; counter < remove && bucket.Items.TryPop(out var _); ++counter)
                 {
-                    BufferStore store = FreeBuffers[i];
-                    List<BufferDesc> buffers = store.buffers;
-
-                    for (int cv = buffers.Count - 1; cv >= 0; cv--)
-                    {
-                        BufferDesc desc = buffers[cv];
-
-                        if (desc.released < olderThan)
-                        {
-                            // buffers stores available buffers ascending by age. So, when we find an old enough, we can
-                            //  delete all entries in the [0..cv] range.
-
-                            int removeCount = cv + 1;
-                            buffers.RemoveRange(0, removeCount);
-                            PoolSize -= (int)(removeCount * store.Size);
-                            break;
-                        }
-                    }
-
-                    if (RemoveEmptyLists && buffers.Count == 0)
-                        FreeBuffers.RemoveAt(i--);
+                    Interlocked.Add(ref PoolSize, bucketSize);
+                    removed++;
                 }
-            }
-            finally
-            {
-                _lock.Release();
+
+                // Remove FastItem too, when it wasn't used in a full maintainence round
+                if (remove == int.MaxValue && Interlocked.Exchange(ref bucket.FastItem, null) != null)
+                    Interlocked.Add(ref PoolSize, bucketSize);
             }
         }
 
-#region Private helper functions
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsPowerOfTwo(long x)
+        private static void UpdateMinCount(ref Bucket bucket, int fastItem)
         {
-            return (x & (x - 1)) == 0;
+            int newMinCount = bucket.Items.Count + fastItem;
+            int oldMinCount = bucket.MinCount;
+            while (newMinCount < oldMinCount && Interlocked.CompareExchange(ref bucket.MinCount, newMinCount, oldMinCount) != oldMinCount)
+                oldMinCount = bucket.MinCount;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        #region Helper functions
+
+        public static bool IsPowerOfTwo(long x) => (x & (x - 1)) == 0;
+
         public static long NextPowerOf2(long x)
         {
             long pow = 1;
@@ -564,126 +485,55 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
             return pow;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static BufferDesc FindFreeBuffer(long size, bool canBeLarger)
-        {
-            // Previously it was an upgradable read lock, and later a write lock around store.buffers.RemoveAt.
-            // However, checking store.buffers.Count in the if statement, and then get the last buffer and finally write lock the RemoveAt call
-            //  has plenty of time for race conditions.
-            //  Another thread could change store.buffers after checking count and getting the last element and before the write lock,
-            //  so in theory we could return with an element and remove another one from the buffers list.
-            //  A new FindFreeBuffer call could return it again causing malformed data and/or releasing it could duplicate it in the store.
-            // I tried to reproduce both issues (malformed data, duble entries) with a test where creating growin number of threads getting buffers writing to them, check the buffers and finally release them
-            //  would fail _only_ if i used a plain Enter/Exit ReadLock pair, or no locking at all.
-            // But, because there's quite a few different platforms and unity's implementation can be different too, switching from an upgradable lock to a more stricter write lock seems safer.
-            //
-            // An interesting read can be found here: https://stackoverflow.com/questions/21411018/readerwriterlockslim-enterupgradeablereadlock-always-a-deadlock
-
-            //using (new WriteLock(rwLock))
-            _lock.Acquire();
-            try
-            {
-                for (int i = 0; i < FreeBuffers.Count; ++i)
-                {
-                    BufferStore store = FreeBuffers[i];
-
-                    if (store.buffers.Count > 0 && (store.Size == size || (canBeLarger && store.Size > size)))
-                    {
-                        // Getting the last one has two desired effect:
-                        //  1.) RemoveAt should be quicker as it don't have to move all the remaining entries
-                        //  2.) Old, non-used buffers will age. Getting a buffer and putting it back will not keep buffers fresh.
-
-                        BufferDesc lastFree = store.buffers[store.buffers.Count - 1];
-                        store.buffers.RemoveAt(store.buffers.Count - 1);
-                        
-                        return lastFree;
-                    }
-                }
-            }
-            finally
-            {
-                _lock.Release();
-            }
-
-            return BufferDesc.Empty;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void AddFreeBuffer(byte[] buffer)
-        {
-            int bufferLength = buffer.Length;
-
-            for (int i = 0; i < FreeBuffers.Count; ++i)
-            {
-                BufferStore store = FreeBuffers[i];
-
-                if (store.Size == bufferLength)
-                {
-                    // We highly assume here that every buffer will be released only once.
-                    //  Checking for double-release would mean that we have to do another O(n) operation, where n is the
-                    //  count of the store's elements.
-
-                    if (IsDoubleReleaseCheckEnabled)
-                        for (int cv = 0; cv < store.buffers.Count; ++cv)
-                        {
-                            var entry = store.buffers[cv];
-                            if (System.Object.ReferenceEquals(entry.buffer, buffer))
-                            {
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
-                                if (BorrowedBuffers.TryGetValue(buffer, out var bb))
-                                {
-                                    HTTPManager.Logger.Error("BufferPool", $"Buffer ({entry}) already added to the pool! BorrowedBuffer: {bb.StackTrace}", bb.Context);
-                                }
-                                else
-#endif
-                                    HTTPManager.Logger.Error("BufferPool", $"Buffer ({entry}) already added to the pool!");
-                                //throw new Exception($"Buffer ({entry}) already added to the pool!");
-                                return;
-                            }
-                        }
-
-                    store.buffers.Add(new BufferDesc(buffer));
-                    return;
-                }
-
-                if (store.Size > bufferLength)
-                {
-                    FreeBuffers.Insert(i, new BufferStore(bufferLength, buffer));
-                    return;
-                }
-            }
-
-            // When we reach this point, there's no same sized or larger BufferStore present, so we have to add a new one
-            //  to the end of our list.
-            FreeBuffers.Add(new BufferStore(bufferLength, buffer));
-        }
-
-#if BESTHTTP_ENABLE_BUFFERPOOL_BORROWED_BUFFERS_COLLECTION
+        [ThreadStatic]
         private static System.Text.StringBuilder stacktraceBuilder;
-        private static string ProcessStackTrace(string stackTrace)
+        public static string ProcessStackTrace(string stackTrace)
         {
             if (string.IsNullOrEmpty(stackTrace))
                 return string.Empty;
 
+            stacktraceBuilder ??= new System.Text.StringBuilder();
+
             var lines = stackTrace.Split('\n');
 
-            if (stacktraceBuilder == null)
-                stacktraceBuilder = new System.Text.StringBuilder(lines.Length);
-            else
-                stacktraceBuilder.Length = 0;
-
-            // skip top 4 lines that would show the logger.
-
             for (int i = 0; i < lines.Length; ++i)
-                if (!lines[i].Contains(".Memory.BufferPool") &&
-                    !lines[i].Contains("Environment") &&
-                    !lines[i].Contains("System.Threading"))
-                    stacktraceBuilder.Append(lines[i].Replace("Best.HTTP.", ""));
+            {
+                var line = lines[i];
+                if (!line.Contains("Shared.PlatformSupport.Memory.Tracker..ctor") &&
+                    !line.Contains(".Memory.BufferPool") &&
+                    !line.Contains("Environment") &&
+                    !line.Contains("System.Threading"))
+                    stacktraceBuilder.Append(line.Replace("Best.HTTP.", ""));
+            }
 
             return stacktraceBuilder.ToString();
         }
-#endif
 
-#endregion
+        [BurstCompile]
+        private static int GetIdx(long po2)
+        {
+            if (IsBmi1Supported)
+                return (int)tzcnt_u64((ulong)(po2 >> firstIdx));
+            /*else if (IsNeonSupported)
+            {
+                v64 v = new v64((uint)po2, (uint)po2);
+                var result = vclz_s32(v);
+                return (int)result.UInt0;
+            }*/
+
+            ulong a = (ulong)po2;
+            ulong c = 64;
+            a &= (ulong)-(long)(a);
+            if (a != 0) c--;
+            if ((a & 0x00000000FFFFFFFF) != 0) c -= 32;
+            if ((a & 0x0000FFFF0000FFFF) != 0) c -= 16;
+            if ((a & 0x00FF00FF00FF00FF) != 0) c -= 8;
+            if ((a & 0x0F0F0F0F0F0F0F0F) != 0) c -= 4;
+            if ((a & 0x3333333333333333) != 0) c -= 2;
+            if ((a & 0x5555555555555555) != 0) c -= 1;
+            return (int)c;
+        }
+
+        #endregion
     }
 }

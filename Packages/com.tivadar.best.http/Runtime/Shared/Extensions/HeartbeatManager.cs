@@ -1,9 +1,9 @@
+using Best.HTTP.Shared.Logger;
+
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
-
-using Best.HTTP.Shared.Logger;
-using Best.HTTP.Shared.PlatformSupport.Threading;
 
 namespace Best.HTTP.Shared.Extensions
 {
@@ -47,73 +47,78 @@ namespace Best.HTTP.Shared.Extensions
         void OnHeartbeatUpdate(DateTime utcNow, TimeSpan dif);
     }
 
+    enum HeartbeatUpdateEventType
+    {
+        Subscribe,
+        Unsubscribe,
+        Clear
+    }
+
+    struct HeartbeatUpdateEvent
+    {
+        public HeartbeatUpdateEventType Event;
+        public IHeartbeat Heartbeat;
+    }
+
     /// <summary>
     /// A manager class that can handle subscribing and unsubscribeing in the same update.
     /// </summary>
     public sealed class HeartbeatManager
     {
-        private ReaderWriterLockSlim rwLock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
+        private List<IHeartbeat> _heartbeats = new List<IHeartbeat>();
+        private DateTime _lastUpdate = DateTime.MinValue;
 
-        private List<IHeartbeat> Heartbeats = new List<IHeartbeat>();
-        private IHeartbeat[] UpdateArray;
-        private DateTime LastUpdate = DateTime.MinValue;
+        private ConcurrentQueue<HeartbeatUpdateEvent> _updates = new();
 
         public void Subscribe(IHeartbeat heartbeat)
         {
-            using var _ = new WriteLock(rwLock);
-
-            if (!Heartbeats.Contains(heartbeat))
-                Heartbeats.Add(heartbeat);
+            this._updates.Enqueue(new HeartbeatUpdateEvent { Event = HeartbeatUpdateEventType.Subscribe, Heartbeat = heartbeat });
         }
 
         public void Unsubscribe(IHeartbeat heartbeat)
         {
-            using var _ = new WriteLock(rwLock);
-
-            Heartbeats.Remove(heartbeat);
+            this._updates.Enqueue(new HeartbeatUpdateEvent { Event = HeartbeatUpdateEventType.Unsubscribe, Heartbeat = heartbeat });
         }
 
         public void Update()
         {
             var now = HTTPManager.CurrentFrameDateTime;
 
-            if (LastUpdate == DateTime.MinValue)
-                LastUpdate = now;
+            if (_lastUpdate == DateTime.MinValue)
+                _lastUpdate = now;
             else
             {
-                TimeSpan dif = now - LastUpdate;
-                LastUpdate = now;
+                TimeSpan dif = now - _lastUpdate;
+                _lastUpdate = now;
                 
-                int count = 0;
-
-                using (var _ = new ReadLock(rwLock))
+                while (this._updates.TryDequeue(out var updateEvent))
                 {
-                    if (UpdateArray == null || UpdateArray.Length < Heartbeats.Count)
-                        Array.Resize(ref UpdateArray, Heartbeats.Count);
-
-                    Heartbeats.CopyTo(0, UpdateArray, 0, Heartbeats.Count);
-                    Array.Clear(UpdateArray, Heartbeats.Count, UpdateArray.Length - Heartbeats.Count);
-
-                    count = Heartbeats.Count;
+                    switch (updateEvent.Event)
+                    {
+                        case HeartbeatUpdateEventType.Subscribe: this._heartbeats.Add(updateEvent.Heartbeat); break;
+                        case HeartbeatUpdateEventType.Unsubscribe: this._heartbeats.Remove(updateEvent.Heartbeat); break;
+                        case HeartbeatUpdateEventType.Clear: this._heartbeats.Clear(); break;
+                    }
                 }
 
-                for (int i = 0; i < count; ++i)
+                for (int i = 0; i < this._heartbeats.Count; ++i)
                 {
+                    var heartbeat = this._heartbeats[i];
                     try
                     {
-                        UpdateArray[i].OnHeartbeatUpdate(now, dif);
+                        heartbeat.OnHeartbeatUpdate(now, dif);
                     }
-                    catch
-                    { }
+                    catch (Exception ex)
+                    {
+                        HTTPManager.Logger.Exception("HeartbeatManager", heartbeat.GetType().Name, ex, null);
+                    }
                 }
             }
         }
 
         public void Clear()
         {
-            using var _ = new WriteLock(rwLock);
-
-            Heartbeats.Clear();
+            this._updates.Enqueue(new HeartbeatUpdateEvent { Event = HeartbeatUpdateEventType.Clear, Heartbeat = null });
         }
     }
 }

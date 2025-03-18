@@ -722,7 +722,7 @@ namespace Best.HTTP.Caching
                 // If there are more than one requests accessing the same resource it's possible that the first one sets the RequestTime
                 //  but ResponseTime is the same old value while the second request tries to calculate the resrouce's Age. In this case,
                 // we will just use the received Age.
-                if (content.ResponseTime > content.RequestTime)
+                if (content.ResponseTime <= content.RequestTime)
                 {
                     var apparent_age = Max(0, (int)(content.ResponseTime - content.Date).TotalSeconds);
                     var response_delay = (int)(content.ResponseTime - content.RequestTime).TotalSeconds;

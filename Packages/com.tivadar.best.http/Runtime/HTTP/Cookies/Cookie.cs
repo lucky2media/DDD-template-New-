@@ -1,11 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
 using Best.HTTP.Shared;
 using Best.HTTP.Shared.Extensions;
 using Best.HTTP.Shared.Logger;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Best.HTTP.Cookies
 {
@@ -104,15 +103,15 @@ namespace Best.HTTP.Cookies
         #region Public Constructors
 
         public Cookie(string name, string value)
-            :this(name, value, "/", string.Empty)
-        {}
+            : this(name, value, "/", string.Empty)
+        { }
 
         public Cookie(string name, string value, string path)
             : this(name, value, path, string.Empty)
-        {}
+        { }
 
         public Cookie(string name, string value, string path, string domain)
-            :this() // call the parameter-less constructor to set default values
+            : this() // call the parameter-less constructor to set default values
         {
             this.Name = name;
             this.Value = value;
@@ -121,7 +120,7 @@ namespace Best.HTTP.Cookies
         }
 
         public Cookie(Uri uri, string name, string value, DateTime expires, bool isSession = true)
-            :this(name, value, uri.AbsolutePath, uri.Host)
+            : this(name, value, uri.AbsolutePath, uri.Host)
         {
             this.Expires = expires;
             this.IsSession = isSession;
@@ -129,7 +128,7 @@ namespace Best.HTTP.Cookies
         }
 
         public Cookie(Uri uri, string name, string value, long maxAge = -1, bool isSession = true)
-            :this(name, value, uri.AbsolutePath, uri.Host)
+            : this(name, value, uri.AbsolutePath, uri.Host)
         {
             this.MaxAge = maxAge;
             this.IsSession = isSession;
@@ -147,6 +146,8 @@ namespace Best.HTTP.Cookies
             MaxAge = -1;
             LastAccess = DateTime.UtcNow;
         }
+
+        public string ToHeaderValue() => string.Concat(this.Name, "=", this.Value);
 
         public bool WillExpireInTheFuture()
         {
@@ -263,7 +264,7 @@ namespace Best.HTTP.Cookies
 
                     // 3. If the uri-path contains no more than one %x2F ("/") character,
                     // output % x2F("/") and skip the remaining step.
-                    
+
                     int slashCount = 1;
                     int lastSlashIdx = 0;
                     for (int i = 1; i < cookie.Path.Length; i++)
@@ -336,9 +337,7 @@ namespace Best.HTTP.Cookies
         #region Overrides and new Equals function
 
         public override string ToString()
-        {
-            return string.Concat(this.Name, "=", this.Value);
-        }
+            => $"[Cookie '{this.Name}' = '{this.Value}', {this.IsSession}, '{this.Path}']";
 
         public override bool Equals(object obj)
         {
