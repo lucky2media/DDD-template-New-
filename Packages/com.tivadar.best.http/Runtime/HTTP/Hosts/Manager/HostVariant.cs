@@ -1,13 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-
 using Best.HTTP.Hosts.Connections;
 using Best.HTTP.Hosts.Connections.File;
 using Best.HTTP.Hosts.Settings;
 using Best.HTTP.Shared;
 using Best.HTTP.Shared.Extensions;
 using Best.HTTP.Shared.Logger;
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace Best.HTTP.HostSetting
 {
@@ -54,7 +54,7 @@ namespace Best.HTTP.HostSetting
         public HostProtocolSupport ProtocolSupport { get; private set; }
 
         public DateTime LastProtocolSupportUpdate { get; private set; }
-        
+
         public LoggingContext Context { get; private set; }
 
         // All the connections. Free and processing ones too.
@@ -74,7 +74,7 @@ namespace Best.HTTP.HostSetting
             this.Host = host;
             if (this.Host.Uri.IsFile)
                 this.ProtocolSupport = HostProtocolSupport.File;
-            
+
             this.Context = new LoggingContext(this);
             this.Context.Add("Host", this.Host.Host);
 
@@ -106,7 +106,7 @@ namespace Best.HTTP.HostSetting
             request.Context.Remove(nameof(HostVariant));
             request.Context.Add(nameof(HostVariant), this.Context);
 
-            this.Queue.Enqueue(request); 
+            this.Queue.Enqueue(request);
             return TryToSendQueuedRequests();
         }
 
@@ -119,8 +119,10 @@ namespace Best.HTTP.HostSetting
 
             if (availableConnections.Count == 0)
             {
+#if !UNITY_WEBGL || UNITY_EDITOR
                 if (activeConnections > 0 && this.ProtocolSupport == HostProtocolSupport.Unknown)
                     return this;
+#endif
 
                 if (activeConnections < this._settings.MaxConnectionPerVariant)
                 {
@@ -152,15 +154,20 @@ namespace Best.HTTP.HostSetting
                 {
                     var kvp = availableConnections[0];
 
-                    nextRequest.Context.Remove(nameof(HostVariant));
-                    nextRequest.Context.Add(nameof(HostVariant), this.Context);
+                    if (HTTPManager.Logger.IsDiagnostic)
+                    {
+	                    nextRequest.Context.Remove(nameof(HostVariant));
+	                    nextRequest.Context.Add(nameof(HostVariant), this.Context);
 
-                        if (HTTPManager.Logger.IsDiagnostic)
-                    HTTPManager.Logger.Information(nameof(HostVariant), $"Send({kvp.Value.GetType().Name})", nextRequest.Context);
+                        var key = kvp.Value.GetType().Name;
+                        nextRequest.Context.Add(key, kvp.Value.Context);
+
+                        HTTPManager.Logger.Information(nameof(HostVariant), $"Send({nextRequest.Context.Hash}, {key} => {kvp.Value.Context.Hash})", nextRequest.Context);
+                    }
 
                     RequestEventHelper.EnqueueRequestEvent(new RequestEventInfo(nextRequest, HTTPRequestStates.Processing, null));
 
-					OnConnectionStartedProcessingRequest(kvp.Value, nextRequest);
+                    OnConnectionStartedProcessingRequest(kvp.Value, nextRequest);
                     // then start process the request
                     kvp.Value.Process(nextRequest);
 
@@ -192,8 +199,8 @@ namespace Best.HTTP.HostSetting
             {
                 var conn = Connections[i];
 
-                if (conn.State == HTTPConnectionStates.Initial || 
-                    conn.State == HTTPConnectionStates.Free || 
+                if (conn.State == HTTPConnectionStates.Initial ||
+                    conn.State == HTTPConnectionStates.Free ||
                     (conn.CanProcessMultiple && conn.AssignedRequests < conn.MaxAssignedRequests))
                     connectionCollector.Add(new KeyValuePair<int, ConnectionBase>(conn.AssignedRequests, conn));
 
@@ -215,14 +222,14 @@ namespace Best.HTTP.HostSetting
 
             if (conn == null)
             {
-            if (this.ProtocolSupport == HostProtocolSupport.File)
-                conn = new FileConnection(this.Host);
-            else
-            {
+                if (this.ProtocolSupport == HostProtocolSupport.File)
+                    conn = new FileConnection(this.Host);
+                else
+                {
 #if UNITY_WEBGL && !UNITY_EDITOR
-                conn = new Best.HTTP.Hosts.Connections.WebGL.WebGLXHRConnection(this.Host);
+                    conn = new Best.HTTP.Hosts.Connections.WebGL.WebGLXHRConnection(this.Host);
 #else
-                conn = new HTTPOverTCPConnection(this.Host);
+                    conn = new HTTPOverTCPConnection(this.Host);
 #endif
                 }
             }
@@ -334,7 +341,7 @@ namespace Best.HTTP.HostSetting
             {
                 if (HTTPManager.Logger.IsDiagnostic)
                     HTTPManager.Logger.Verbose(nameof(HostVariant), $"LoadFrom - Too Old! LastProtocolSupportUpdate: {this.LastProtocolSupportUpdate.ToString(CultureInfo.InvariantCulture)}, ProtocolSupport: {this.ProtocolSupport}", this.Context);
-                this.ProtocolSupport = HostProtocolSupport.Unknown;                
+                this.ProtocolSupport = HostProtocolSupport.Unknown;
             }
             else if (HTTPManager.Logger.IsDiagnostic)
                 HTTPManager.Logger.Verbose(nameof(HostVariant), $"LoadFrom - LastProtocolSupportUpdate: {this.LastProtocolSupportUpdate.ToString(CultureInfo.InvariantCulture)}, ProtocolSupport: {this.ProtocolSupport}", this.Context);

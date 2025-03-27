@@ -1,14 +1,14 @@
 #define _LOG_TCP_STREAMER
 
 #if !UNITY_WEBGL || UNITY_EDITOR
+using Best.HTTP.Shared.Extensions;
+using Best.HTTP.Shared.Logger;
+using Best.HTTP.Shared.PlatformSupport.Memory;
+
 using System;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
 using System.Threading;
-
-using Best.HTTP.Shared.Extensions;
-using Best.HTTP.Shared.Logger;
-using Best.HTTP.Shared.PlatformSupport.Memory;
 
 namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
 {
@@ -154,9 +154,14 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
         /// </summary>
         public long Length { get => this.readState.bufferedLength; }
 
+        /// <summary>
+        /// Gets or sets the maximum amount of buffered data allowed for writing to the stream.
+        /// </summary>
+        public readonly uint MaxBufferedWriteAmount;
+
         private ReadState readState = new ReadState();
         private WriteState writeState = new WriteState();
-        
+
         private Socket _socket;
         private LoggingContext _loggingContext;
 
@@ -169,11 +174,6 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
         /// Gets or sets the maximum amount of buffered data allowed for reading from the stream.
         /// </summary>
         private uint MaxBufferedReadAmount;
-
-        /// <summary>
-        /// Gets or sets the maximum amount of buffered data allowed for writing to the stream.
-        /// </summary>
-        private uint MaxBufferedWriteAmount;
 
         /// <summary>
         /// Initializes a new instance of the TCPStreamer class with the specified <see cref="System.Net.Sockets.Socket"/> and parent <see cref="LoggingContext"/>.
@@ -341,8 +341,14 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
 
                     try
                     {
-                        Interlocked.Exchange(ref this._contentConsumer, null)
-                            ?.OnConnectionClosed(this);
+                        var consumer = Interlocked.Exchange(ref this._contentConsumer, null);
+
+                        if (consumer != null)
+                            consumer?.OnConnectionClosed(this);
+#if LOG_TCP_STREAMER
+                        else if (HTTPManager.Logger.IsDiagnostic)
+                            HTTPManager.Logger.Error(nameof(TCPStreamer), $"{nameof(OnReceived)}({errorCode}) - No consumer to call OnConnectionClosed on!", this._loggingContext);
+#endif
                     }
                     catch (Exception e)
                     {
@@ -533,11 +539,11 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
 
             this._socket?.Dispose();
             this._socket = null;
-            
+
             GC.SuppressFinalize(this);
         }
 
-        void IHeartbeat.OnHeartbeatUpdate(DateTime now, TimeSpan dif) 
+        void IHeartbeat.OnHeartbeatUpdate(DateTime now, TimeSpan dif)
         {
             if (this.writeState._segmentsToWrite.Count > 0 && Interlocked.CompareExchange(ref this.writeState._writeInProgress, 1, 0) == 0)
             {
@@ -578,7 +584,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
                 return;
 
             Best.HTTP.Profiler.Network.NetworkStatsCollector.DecrementCurrentConnections();
-            
+
             if (ar != null)
             {
                 try

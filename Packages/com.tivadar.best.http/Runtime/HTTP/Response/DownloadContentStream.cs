@@ -1,13 +1,12 @@
+using Best.HTTP.Hosts.Connections;
+using Best.HTTP.Shared;
+using Best.HTTP.Shared.PlatformSupport.Memory;
+
 using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Threading;
-
-using Best.HTTP.Hosts.Connections;
-using Best.HTTP.Shared;
-using Best.HTTP.Shared.Extensions;
-using Best.HTTP.Shared.PlatformSupport.Memory;
 
 namespace Best.HTTP.Response
 {
@@ -147,7 +146,7 @@ namespace Best.HTTP.Response
         /// <param name="error">The exception that occurred during download, if any.</param>
         internal virtual void CompleteAdding(Exception error)
         {
-            if (HTTPManager.Logger.Level >= Shared.Logger.Loglevels.Information)
+            if (HTTPManager.Logger.Level <= Shared.Logger.Loglevels.Information)
                 HTTPManager.Logger.Information(nameof(DownloadContentStream), $"CompleteAdding({error})", this.Response?.Context);
 
             this._isCompleted = true;
@@ -189,8 +188,6 @@ namespace Best.HTTP.Response
         /// <exception cref="ObjectDisposedException">If the stream is already disposed.</exception>
         public override int Read(byte[] buffer, int offset, int count)
         {
-            using var _ = new Unity.Profiling.ProfilerMarker($"{nameof(DownloadContentStream)}.{nameof(Read)}").Auto();
-
             if (this._isDisposed)
                 throw new ObjectDisposedException(GetType().FullName);
 
@@ -280,7 +277,6 @@ namespace Best.HTTP.Response
                 this._currentSegment = BufferSegment.Empty;
 
                 BufferPool.ReleaseBulk(this._segments);
-                this._segments.Clear();
             }
         }
 

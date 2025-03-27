@@ -137,15 +137,15 @@ namespace Best.HTTP.Shared.Databases
                 this.freeListManager.Add(metadata.FilePosition, metadata.Length);
                 this.stream.Seek(metadata.FilePosition, SeekOrigin.Begin);
 
-                var buffer = BufferPool.Get(BufferPool.MinBufferSize, true);
-                Array.Clear(buffer, 0, (int)BufferPool.MinBufferSize);
+                var buffer = BufferPool.Get(BufferPool.MIN_BUFFER_SIZE, true);
+                Array.Clear(buffer, 0, (int)BufferPool.MIN_BUFFER_SIZE);
 
                 int length = metadata.Length;
-                int iterationCount = length / (int)BufferPool.MinBufferSize;
+                int iterationCount = length / (int)BufferPool.MIN_BUFFER_SIZE;
                 for (int i = 0; i < iterationCount; ++i)
                 {
-                    this.stream.Write(buffer, 0, (int)BufferPool.MinBufferSize);
-                    length -= (int)BufferPool.MinBufferSize;
+                    this.stream.Write(buffer, 0, (int)BufferPool.MIN_BUFFER_SIZE);
+                    length -= (int)BufferPool.MIN_BUFFER_SIZE;
                 }
                 this.stream.Write(buffer, 0, length);
 

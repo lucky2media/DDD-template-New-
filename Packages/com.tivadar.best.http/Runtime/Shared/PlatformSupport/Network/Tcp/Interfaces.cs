@@ -1,6 +1,6 @@
-using System;
-
 using Best.HTTP.Shared.Streams;
+
+using System;
 
 namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
 {
@@ -52,6 +52,13 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp
         /// </summary>
         /// <param name="consumer">The <see cref="IContentConsumer"/> to unbind from.</param>
         void UnbindIf(IContentConsumer consumer);
+
+        /// <summary>
+        /// Unbinds the content provider from a specific content consumer if it is currently bound to that consumer, and changes to the new consumer.
+        /// </summary>
+        /// <param name="consumer">The <see cref="IContentConsumer"/> to unbind from.</param>
+        /// <param name="consumer">The <see cref="IContentConsumer"/> to bin to.</param>
+        void SwitchIf(IContentConsumer from, IContentConsumer to);
     }
 
     /// <summary>

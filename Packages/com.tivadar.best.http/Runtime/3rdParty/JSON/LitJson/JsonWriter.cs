@@ -34,6 +34,12 @@ namespace Best.HTTP.JSON.LitJson
         public bool InObject;
         public bool ExpectingValue;
         public int  Padding;
+
+        internal void Reset()
+        {
+            Count = Padding = 0;
+            InArray = InObject = ExpectingValue = false;
+        }
     }
 
     public sealed class JsonWriter
@@ -52,33 +58,41 @@ namespace Best.HTTP.JSON.LitJson
         private bool                 validate;
         private bool                 lower_case_properties;
         private TextWriter           writer;
+
+        private Queue<WriterContext> _contextPool;
         #endregion
 
 
         #region Properties
-        public int IndentValue {
+        public int IndentValue
+        {
             get { return indent_value; }
-            set {
+            set
+            {
                 indentation = (indentation / indent_value) * value;
                 indent_value = value;
             }
         }
 
-        public bool PrettyPrint {
+        public bool PrettyPrint
+        {
             get { return pretty_print; }
             set { pretty_print = value; }
         }
 
-        public TextWriter TextWriter {
+        public TextWriter TextWriter
+        {
             get { return writer; }
         }
 
-        public bool Validate {
+        public bool Validate
+        {
             get { return validate; }
             set { validate = value; }
         }
 
-        public bool LowerCaseProperties {
+        public bool LowerCaseProperties
+        {
             get { return lower_case_properties; }
             set { lower_case_properties = value; }
         }
@@ -129,7 +143,8 @@ namespace Best.HTTP.JSON.LitJson
                 throw new JsonException (
                     "A complete JSON symbol has already been written");
 
-            switch (cond) {
+            switch (cond)
+            {
             case Condition.InArray:
                 if (! context.InArray)
                     throw new JsonException (
@@ -166,6 +181,8 @@ namespace Best.HTTP.JSON.LitJson
 
         private void Init ()
         {
+            _contextPool = new Queue<WriterContext>();
+
             has_reached_end = false;
             hex_seq = new char[4];
             indentation = 0;
@@ -183,7 +200,8 @@ namespace Best.HTTP.JSON.LitJson
         {
             int num;
 
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 4; i++)
+            {
                 num = n % 16;
 
                 if (num < 10)
@@ -233,8 +251,10 @@ namespace Best.HTTP.JSON.LitJson
             writer.Write ('"');
 
             int n = str.Length;
-            for (int i = 0; i < n; i++) {
-                switch (str[i]) {
+            for (int i = 0; i < n; i++)
+            {
+                switch (str[i])
+                {
                 case '\n':
                     writer.Write ("\\n");
                     continue;
@@ -262,7 +282,8 @@ namespace Best.HTTP.JSON.LitJson
                     continue;
                 }
 
-                if ((int) str[i] >= 32 && (int) str[i] <= 126) {
+                if ((int)str[i] >= 32 && (int)str[i] <= 126)
+                {
                     writer.Write (str[i]);
                     continue;
                 }
@@ -296,7 +317,12 @@ namespace Best.HTTP.JSON.LitJson
         {
             has_reached_end = false;
 
-            ctx_stack.Clear ();
+            while (ctx_stack.Count > 0)
+                _contextPool.Enqueue(ctx_stack.Pop());
+
+            if (_contextPool.TryDequeue(out context))
+                context.Reset();
+            else
             context = new WriterContext ();
             ctx_stack.Push (context);
 
@@ -399,10 +425,11 @@ namespace Best.HTTP.JSON.LitJson
             DoValidation (Condition.InArray);
             PutNewline (false);
 
-            ctx_stack.Pop ();
+            _contextPool.Enqueue(ctx_stack.Pop());
             if (ctx_stack.Count == 1)
                 has_reached_end = true;
-            else {
+            else
+            {
                 context = ctx_stack.Peek ();
                 context.ExpectingValue = false;
             }
@@ -418,6 +445,9 @@ namespace Best.HTTP.JSON.LitJson
 
             Put ("[");
 
+            if (_contextPool.TryDequeue(out context))
+                context.Reset();
+            else
             context = new WriterContext ();
             context.InArray = true;
             ctx_stack.Push (context);
@@ -430,10 +460,11 @@ namespace Best.HTTP.JSON.LitJson
             DoValidation (Condition.InObject);
             PutNewline (false);
 
-            ctx_stack.Pop ();
+            _contextPool.Enqueue(ctx_stack.Pop());
             if (ctx_stack.Count == 1)
                 has_reached_end = true;
-            else {
+            else
+            {
                 context = ctx_stack.Peek ();
                 context.ExpectingValue = false;
             }
@@ -449,6 +480,9 @@ namespace Best.HTTP.JSON.LitJson
 
             Put ("{");
 
+            if (_contextPool.TryDequeue(out context))
+                context.Reset();
+            else
             context = new WriterContext ();
             context.InObject = true;
             ctx_stack.Push (context);
@@ -466,7 +500,8 @@ namespace Best.HTTP.JSON.LitJson
 
             PutString (propertyName);
 
-            if (pretty_print) {
+            if (pretty_print)
+            {
                 if (propertyName.Length > context.Padding)
                     context.Padding = propertyName.Length;
 
@@ -475,7 +510,8 @@ namespace Best.HTTP.JSON.LitJson
                     writer.Write (' ');
 
                 writer.Write (": ");
-            } else
+            }
+            else
                 writer.Write (':');
 
             context.ExpectingValue = true;

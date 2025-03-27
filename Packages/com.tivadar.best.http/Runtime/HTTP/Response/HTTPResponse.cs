@@ -333,6 +333,43 @@ namespace Best.HTTP
             }
         }
 
+        internal static BufferSegment ReadToAsByte(Stream stream, byte blocker)
+        {
+            var readBuf = BufferPool.Get(1024, true, null);
+            try
+            {
+                int bufpos = 0;
+
+                int ch = stream.ReadByte();
+                while (ch != blocker && ch != -1)
+                {
+                    if (ch > 0x7f) //replaces asciitostring
+                        ch = '?';
+
+                    //make buffer larger if too short
+                    if (readBuf.Length <= bufpos + 1)
+                        BufferPool.Resize(ref readBuf, readBuf.Length * 2, true, false);
+
+                    if (bufpos > 0 || !char.IsWhiteSpace((char)ch)) //trimstart
+                    {
+                        readBuf[bufpos++] = (byte)ch;
+                        readBuf[bufpos++] = 0;
+                    }
+                    ch = stream.ReadByte();
+                }
+
+                while (bufpos > 0 && char.IsWhiteSpace((char)readBuf[bufpos - 2]))
+                    bufpos -= 2;
+
+                return readBuf.AsBuffer(bufpos);
+            }
+            catch
+            {
+                BufferPool.Release(readBuf);
+                return BufferSegment.Empty;
+            }
+        }
+
         internal static string ReadTo(Stream stream, byte blocker1, byte blocker2)
         {
             byte[] readBuf = BufferPool.Get(1024, true);

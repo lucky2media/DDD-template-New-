@@ -258,10 +258,9 @@ namespace Best.HTTP.Proxies
                         var digest = DigestStore.GetOrCreate(this.Address);
                         digest.ParseChallange(authHeader);
 
-                        retryNeogitiation = connectParameters.AuthenticationAttempts < ProxyConnectParameters.MaxAuthenticationAttempts &&
+                        retryNeogitiation = (connectParameters.AuthenticationAttempts < ProxyConnectParameters.MaxAuthenticationAttempts || digest.Stale) &&
                             this.Credentials != null &&
-                            digest.IsUriProtected(this.Address) &&
-                            (/*connectParameters.request == null || !connectParameters.request.HasHeader("Proxy-Authorization") ||*/ digest.Stale);
+                            digest.IsUriProtected(this.Address);
                     }
 
                     if (!retryNeogitiation)

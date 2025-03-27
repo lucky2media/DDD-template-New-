@@ -1,8 +1,8 @@
 using System.Reflection;
 
-[assembly: AssemblyVersion("3.0.11")]
+[assembly: AssemblyVersion("3.0.14")]
 [assembly: AssemblyCompany("Tivadar György Nagy")]
-[assembly: AssemblyCopyright("Copyright © 2024 Tivadar György Nagy")]
+[assembly: AssemblyCopyright("Copyright © 2025 Tivadar György Nagy")]
 [assembly: AssemblyDescription("Best HTTP is a versatile and efficient HTTP client library for Unity, designed for making HTTP requests, handling responses, and providing advanced features such as asynchronous requests, compression, timing analysis, and more.")]
 
 #if BESTHTTP_WITH_BURST

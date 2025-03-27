@@ -37,5 +37,14 @@ namespace Best.HTTP.Shared.Streams
                 this.Consumer = null;
             }
         }
+
+        public void SwitchIf(IContentConsumer from, IContentConsumer to)
+        {
+            if (from == null || from == this.Consumer)
+            {
+                this.Consumer?.UnsetBinding();
+                SetTwoWayBinding(to);
+            }
+        }
     }
 }

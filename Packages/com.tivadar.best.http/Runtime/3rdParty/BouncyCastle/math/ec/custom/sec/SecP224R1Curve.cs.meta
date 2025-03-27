@@ -9,3 +9,10 @@ MonoImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 267636
+  packageName: Best HTTP
+  packageVersion: 3.0.14
+  assetPath: Packages/com.tivadar.best.http/Runtime/3rdParty/BouncyCastle/math/ec/custom/sec/SecP224R1Curve.cs
+  uploadId: 738644

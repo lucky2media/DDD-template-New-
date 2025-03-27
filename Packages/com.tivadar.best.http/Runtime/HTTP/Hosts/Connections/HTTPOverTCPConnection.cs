@@ -22,7 +22,7 @@ namespace Best.HTTP.Hosts.Connections
     /// <summary>
     /// Represents and manages a connection to a server.
     /// </summary>
-    public sealed class HTTPOverTCPConnection : ConnectionBase, INegotiationPeer
+    public sealed class HTTPOverTCPConnection : ConnectionBase, INegotiationPeer, IContentConsumer
     {
         public PeekableContentProviderStream TopStream { get => this._negotiator.Stream; }
         public TCPStreamer Streamer { get => this._negotiator.Streamer; }
@@ -74,6 +74,8 @@ namespace Best.HTTP.Hosts.Connections
                 return base.CanProcessMultiple;
             }
         }
+
+        PeekableContentProviderStream IContentConsumer.ContentProvider { get; }
 
         private Negotiator _negotiator;
 
@@ -413,6 +415,35 @@ namespace Best.HTTP.Hosts.Connections
             }
 
             base.Dispose(disposing);
+        }
+
+        void IContentConsumer.SetBinding(PeekableContentProviderStream contentProvider)
+        {
+            HTTPManager.Logger.Information(nameof(HTTPOverTCPConnection), $"{nameof(IContentConsumer.SetBinding)}({contentProvider})", this.Context);
+        }
+
+        void IContentConsumer.UnsetBinding()
+        {
+            HTTPManager.Logger.Information(nameof(HTTPOverTCPConnection), $"{nameof(IContentConsumer.UnsetBinding)}()", this.Context);
+        }
+
+        void IContentConsumer.OnContent()
+        {
+            HTTPManager.Logger.Information(nameof(HTTPOverTCPConnection), $"{nameof(IContentConsumer.OnContent)}()", this.Context);
+        }
+
+        void IContentConsumer.OnConnectionClosed()
+        {
+            HTTPManager.Logger.Information(nameof(HTTPOverTCPConnection), $"{nameof(IContentConsumer.OnConnectionClosed)}()", this.Context);
+
+            ConnectionEventHelper.EnqueueConnectionEvent(new ConnectionEventInfo(this, HTTPConnectionStates.Closed));
+        }
+
+        void IContentConsumer.OnError(Exception ex)
+        {
+            HTTPManager.Logger.Information(nameof(HTTPOverTCPConnection), $"{nameof(IContentConsumer.OnError)}({ex})", this.Context);
+
+            ConnectionEventHelper.EnqueueConnectionEvent(new ConnectionEventInfo(this, HTTPConnectionStates.Closed));
         }
     }
 }

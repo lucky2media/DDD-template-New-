@@ -1,9 +1,9 @@
 #if !UNITY_WEBGL || UNITY_EDITOR
-using System;
-
 using Best.HTTP.Shared.Extensions;
-using Best.HTTP.Shared.Streams;
 using Best.HTTP.Shared.PlatformSupport.Memory;
+using Best.HTTP.Shared.Streams;
+
+using System;
 using System.Threading;
 
 namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp.Streams
@@ -106,18 +106,31 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp.Streams
             {
                 DequeueFromStreamer();
 
-                this.Consumer?.OnContent();
+                var consumer = this.Consumer;
+                if (consumer != null)
+                    consumer?.OnContent();
+                else
+                    HTTPManager.Logger.Error(nameof(NonblockingTCPStream), $"{nameof(OnContent)}({streamer}) - No consumer to call OnContent on!", streamer.Context);
             }
         }
 
         public void OnConnectionClosed(TCPStreamer streamer)
         {
-            this.Consumer?.OnConnectionClosed();
+            var consumer = this.Consumer;
+
+            if (consumer != null)
+                consumer?.OnConnectionClosed();
+            else
+                HTTPManager.Logger.Error(nameof(NonblockingTCPStream), $"{nameof(OnConnectionClosed)}({streamer}) - No consumer to call OnConnectionClosed on!", streamer.Context);
         }
 
         public void OnError(TCPStreamer streamer, Exception ex)
         {
-            this.Consumer?.OnError(ex);
+            var consumer = this.Consumer;
+            if (consumer != null)
+                consumer?.OnError(ex);
+            else
+                HTTPManager.Logger.Error(nameof(NonblockingTCPStream), $"{nameof(OnError)}({streamer}, {ex}) - No consumer to call OnError on!", streamer.Context);
         }
 
         void DequeueFromStreamer()

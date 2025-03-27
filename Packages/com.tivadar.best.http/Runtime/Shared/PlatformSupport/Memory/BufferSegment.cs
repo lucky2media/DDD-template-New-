@@ -1,6 +1,6 @@
-using System;
-
 using Best.HTTP.Shared.PlatformSupport.Text;
+
+using System;
 
 namespace Best.HTTP.Shared.PlatformSupport.Memory
 {
@@ -74,6 +74,8 @@ namespace Best.HTTP.Shared.PlatformSupport.Memory
         /// </summary>
         /// <param name="to">The array the data will be copied into.</param>
         public void CopyTo(byte[] to) => Array.Copy(this.Data, this.Offset, to, 0, this.Count);
+
+        public Span<byte> AsSpan() => new Span<byte>(this.Data, this.Offset, this.Count);
 
         public override bool Equals(object obj)
         {

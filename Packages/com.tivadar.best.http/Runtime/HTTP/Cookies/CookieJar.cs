@@ -1,11 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-
 using Best.HTTP.Hosts.Connections;
 using Best.HTTP.Shared;
 using Best.HTTP.Shared.Extensions;
 using Best.HTTP.Shared.PlatformSupport.FileSystem;
+
+using System;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace Best.HTTP.Cookies
 {
@@ -45,7 +45,7 @@ namespace Best.HTTP.Cookies
                 {
                     _isSavingSupported = false;
 
-                    HTTPManager.Logger.Warning("CookieJar", "Cookie saving and loading disabled!");
+                    HTTPManager.Logger.Warning(nameof(CookieJar), "Cookie saving and loading disabled!");
                 }
                 finally
                 {
@@ -71,7 +71,7 @@ namespace Best.HTTP.Cookies
         /// </summary>
         public static bool IsEnabled = true;
 
-#region Privates
+        #region Privates
 
         /// <summary>
         /// List of the Cookies
@@ -91,9 +91,9 @@ namespace Best.HTTP.Cookies
         private static bool Loaded;
         private static RunOnceOnMainThread _saveLibraryRunner = new RunOnceOnMainThread(Persist, null);
 
-#endregion
+        #endregion
 
-#region Internal Functions
+        #region Internal Functions
 
         internal static void SetupFolder()
         {
@@ -106,6 +106,9 @@ namespace Best.HTTP.Cookies
                 {
                     CookieFolder = System.IO.Path.Combine(HTTPManager.GetRootSaveFolder(), "Cookies");
                     LibraryPath = System.IO.Path.Combine(CookieFolder, "Library");
+
+                    if (HTTPManager.Logger.IsDiagnostic)
+                        HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(SetupFolder)}() - {nameof(LibraryPath)}: '{LibraryPath}'");
                 }
             }
             catch
@@ -119,6 +122,9 @@ namespace Best.HTTP.Cookies
         {
             if (response == null || !IsEnabled)
                 return false;
+
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(SetFromRequest)}({response})", response.Context);
 
             List<Cookie> newCookies = new List<Cookie>();
             var setCookieHeaders = response.GetHeaderValues("set-cookie");
@@ -149,6 +155,9 @@ namespace Best.HTTP.Cookies
                                 Cookies.Add(cookie);
 
                                 newCookies.Add(cookie);
+
+                                if (HTTPManager.Logger.IsDiagnostic)
+                                    HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(SetFromRequest)}({response}) - new cookie: {cookie}", response.Context);
                             }
                             else
                             {
@@ -157,14 +166,22 @@ namespace Best.HTTP.Cookies
                                 Cookies[idx] = cookie;
 
                                 newCookies.Add(cookie);
+
+                                if (HTTPManager.Logger.IsDiagnostic)
+                                    HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(SetFromRequest)}({response}) - refresh cookie: {cookie}", response.Context);
                             }
                         }
                         else if (idx != -1) // delete the cookie
+                        {
+                            if (HTTPManager.Logger.IsDiagnostic)
+                                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(SetFromRequest)}({response}) - deleting cookie: {Cookies[idx]}", response.Context);
+
                             Cookies.RemoveAt(idx);
+                        }
                     }
-                    catch
+                    catch (Exception ex) when (HTTPManager.Logger.IsDiagnostic)
                     {
-                        // Ignore cookie on error
+                        HTTPManager.Logger.Exception(nameof(CookieJar), $"{nameof(SetFromRequest)}({response})", ex, response.Context);
                     }
                     finally
                     {
@@ -182,6 +199,9 @@ namespace Best.HTTP.Cookies
         {
             if (!IsEnabled)
                 return;
+
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(SetFromRequest)}({request})", request.Context);
 
             // Cookies
             // User added cookies are sent even when IsCookiesEnabled is set to false
@@ -209,7 +229,7 @@ namespace Best.HTTP.Cookies
                         else
                             first = false;
 
-                        cookieStr += cookie.ToString();
+                        cookieStr += cookie.ToHeaderValue();
 
                         // 3. Update the last-access-time of each cookie in the cookie-list to the current date and time.
                         cookie.LastAccess = DateTime.UtcNow;
@@ -228,18 +248,24 @@ namespace Best.HTTP.Cookies
             // It's not the same as in the rfc:
             //  http://tools.ietf.org/html/rfc6265#section-5.3
 
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Maintain)}({sendEvent})");
+
             rwLock.EnterWriteLock();
             try
             {
                 uint size = 0;
 
-                for (int i = 0; i < Cookies.Count; )
+                for (int i = 0; i < Cookies.Count;)
                 {
                     var cookie = Cookies[i];
 
                     // Remove expired or not used cookies
                     if (!cookie.WillExpireInTheFuture() || (cookie.LastAccess + AccessThreshold) < DateTime.UtcNow)
                     {
+                        if (HTTPManager.Logger.IsDiagnostic)
+                            HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Maintain)}({sendEvent}) - removing expired cookie: {cookie}");
+
                         Cookies.RemoveAt(i);
                     }
                     else
@@ -257,6 +283,10 @@ namespace Best.HTTP.Cookies
                     while (size > MaximumSize && Cookies.Count > 0)
                     {
                         var cookie = Cookies[0];
+
+                        if (HTTPManager.Logger.IsDiagnostic)
+                            HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Maintain)}({sendEvent}) - removing cookie: {cookie}");
+
                         Cookies.RemoveAt(0);
 
                         size -= cookie.GuessSize();
@@ -288,6 +318,9 @@ namespace Best.HTTP.Cookies
 
             if (!IsEnabled)
                 return;
+
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Persist)}()");
 
             // Delete any expired cookie
             Maintain(false);
@@ -339,6 +372,9 @@ namespace Best.HTTP.Cookies
             if (!IsEnabled)
                 return;
 
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Load)}()");
+
             SetupFolder();
 
             rwLock.EnterWriteLock();
@@ -378,7 +414,7 @@ namespace Best.HTTP.Cookies
                 rwLock.ExitWriteLock();
             }
         }
-                
+
         #endregion
 
         #region Public Functions
@@ -388,6 +424,9 @@ namespace Best.HTTP.Cookies
         /// </summary>
         public static List<Cookie> Get(Uri uri)
         {
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Get)}({uri})");
+
             Load();
 
             rwLock.EnterReadLock();
@@ -449,6 +488,9 @@ namespace Best.HTTP.Cookies
         /// </summary>
         public static void Set(Uri uri, Cookie cookie)
         {
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Set)}({uri}, {cookie})");
+
             cookie.Domain = uri.Host;
             cookie.Path = uri.AbsolutePath;
 
@@ -460,6 +502,9 @@ namespace Best.HTTP.Cookies
         /// </summary>
         public static void Set(Cookie cookie)
         {
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Set)}({cookie})");
+
             Load();
 
             rwLock.EnterWriteLock();
@@ -493,6 +538,9 @@ namespace Best.HTTP.Cookies
         /// </summary>
         public static void Clear()
         {
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Clear)}()");
+
             Load();
 
             rwLock.EnterWriteLock();
@@ -513,12 +561,15 @@ namespace Best.HTTP.Cookies
         /// </summary>
         public static void Clear(TimeSpan olderThan)
         {
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Clear)}({olderThan})");
+
             Load();
 
             rwLock.EnterWriteLock();
             try
             {
-                for (int i = 0; i < Cookies.Count; )
+                for (int i = 0; i < Cookies.Count;)
                 {
                     var cookie = Cookies[i];
 
@@ -542,12 +593,15 @@ namespace Best.HTTP.Cookies
         /// </summary>
         public static void Clear(string domain)
         {
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Clear)}({domain})");
+
             Load();
 
             rwLock.EnterWriteLock();
             try
             {
-                for (int i = 0; i < Cookies.Count; )
+                for (int i = 0; i < Cookies.Count;)
                 {
                     var cookie = Cookies[i];
 
@@ -568,12 +622,15 @@ namespace Best.HTTP.Cookies
 
         public static void Remove(Uri uri, string name)
         {
+            if (HTTPManager.Logger.IsDiagnostic)
+                HTTPManager.Logger.Verbose(nameof(CookieJar), $"{nameof(Remove)}({uri}, {name})");
+
             Load();
 
             rwLock.EnterWriteLock();
             try
             {
-                for (int i = 0; i < Cookies.Count; )
+                for (int i = 0; i < Cookies.Count;)
                 {
                     var cookie = Cookies[i];
 
@@ -591,9 +648,9 @@ namespace Best.HTTP.Cookies
             _saveLibraryRunner.Subscribe();
         }
 
-#endregion
+        #endregion
 
-#region Private Helper Functions
+        #region Private Helper Functions
 
         /// <summary>
         /// Find and return a Cookie and his index in the list.
@@ -615,6 +672,6 @@ namespace Best.HTTP.Cookies
             return null;
         }
 
-#endregion
+        #endregion
     }
 }

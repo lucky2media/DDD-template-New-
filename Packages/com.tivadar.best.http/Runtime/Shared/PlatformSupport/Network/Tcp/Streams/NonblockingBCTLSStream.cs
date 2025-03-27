@@ -1,12 +1,12 @@
 #if (!UNITY_WEBGL || UNITY_EDITOR) && !BESTHTTP_DISABLE_ALTERNATE_SSL
-using System;
-using System.Threading;
-
-using Best.HTTP.Shared.TLS;
-using Best.HTTP.Shared.Streams;
-using Best.HTTP.Shared.PlatformSupport.Memory;
 using Best.HTTP.SecureProtocol.Org.BouncyCastle.Tls;
 using Best.HTTP.Shared.Extensions;
+using Best.HTTP.Shared.PlatformSupport.Memory;
+using Best.HTTP.Shared.Streams;
+using Best.HTTP.Shared.TLS;
+
+using System;
+using System.Threading;
 
 namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp.Streams
 {
@@ -24,7 +24,7 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp.Streams
 
         private object locker = new object();
         private TCPStreamer _streamer;
-        private int _sendBufferSize;
+        private uint _sendBufferSize;
         private bool _disposeStreamer;
 
         private int peek_listIdx;
@@ -38,7 +38,8 @@ namespace Best.HTTP.Shared.PlatformSupport.Network.Tcp.Streams
             this._streamer.ContentConsumer = this;
             this._disposeStreamer = disposeStreamer;
 
-            this._sendBufferSize = this._streamer.Socket.SendBufferSize;
+            // Maximize buffer use
+            this._sendBufferSize = this._streamer.MaxBufferedWriteAmount;
 
             this._tlsClientProtocol = tlsClientProtocol;
             this._tlsClient = tlsClient;

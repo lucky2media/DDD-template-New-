@@ -1,14 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-
 using Best.HTTP.Request.Timings;
-using Best.HTTP.Response;
 using Best.HTTP.Response.Decompression;
 using Best.HTTP.Shared;
 using Best.HTTP.Shared.Extensions;
 using Best.HTTP.Shared.PlatformSupport.Memory;
 using Best.HTTP.Shared.Streams;
+
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Threading;
 
 using static Best.HTTP.Hosts.Connections.HTTP1.Constants;
 using static Best.HTTP.Response.HTTPStatusCodes;
@@ -187,7 +187,15 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
 
                                 // https://www.rfc-editor.org/rfc/rfc9110#name-304-not-modified
                                 // A 304 response is terminated by the end of the header section; it cannot contain content or trailers.
-                                this.StatusCode == NotModified)
+                                this.StatusCode == NotModified ||
+
+                                // https://www.rfc-editor.org/rfc/rfc7230#section-3.3
+                                // Responses to the HEAD request method (Section 4.3.2
+                                // of [RFC7231]) never include a message body because the associated
+                                // response header fields (e.g., Transfer-Encoding, Content-Length,
+                                // etc.), if present, indicate only what their values would have been if
+                                // the request method had been GET
+                                this.Request.MethodType == HTTPMethods.Head)
                             {
                                 this._readState = PeekableReadState.Finished;
                                 goto case PeekableReadState.Finished;
@@ -358,11 +366,27 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
                 return false;
 
             // Read until the end of line, then split the string so we will discard any optional chunk extensions
-            string line = ReadTo(peekable, LF);
-            string[] splits = line.Split(';');
-            string num = splits[0];
 
-            return int.TryParse(num, System.Globalization.NumberStyles.AllowHexSpecifier, null, out result);
+            var buff = ReadToAsByte(peekable, LF);
+
+            if (buff == BufferSegment.Empty)
+                return false;
+
+            try
+            {
+                var chars = MemoryMarshal.Cast<byte, char>(buff.AsSpan());
+
+                var idx = chars.IndexOf(';');
+
+                if (idx == -1)
+                    idx = chars.Length;
+
+                return int.TryParse(chars.Slice(0, idx), System.Globalization.NumberStyles.AllowHexSpecifier, null, out result);
+            }
+            finally
+            {
+                BufferPool.Release(buff);
+            }
         }
 
         void ProcessReadChunked(PeekableStream peekable)
@@ -422,7 +446,8 @@ namespace Best.HTTP.Hosts.Connections.HTTP1
 
                     if (IsNewLinePresent(peekable))
                     {
-                        ReadTo(peekable, LF);
+                        BufferPool.Release(HTTPResponse.ReadToAsByte(peekable, LF));
+
                         goto case ReadChunkedStates.ReadChunkLength;
                     }
                     break;
