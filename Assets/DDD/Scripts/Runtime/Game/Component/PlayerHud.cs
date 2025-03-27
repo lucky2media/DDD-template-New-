@@ -10,7 +10,8 @@ namespace DDD.Scripts.Game.Component
 {
     public class PlayerHud : DDDMonoBehaviour
     {
-        
+        public PlayerData playerData;
+      private DDDNetworkManager dddNetworkManager => DDDNetworkManager.Instance;
 
         [SerializeField] private TextMeshProUGUI userBalanceText;
         private Balance balance => Manager.playerData.userDTO.Data.Balance;

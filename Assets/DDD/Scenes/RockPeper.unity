@@ -343,12 +343,8 @@ MonoBehaviour:
   accessToken: 
   useMockData: 0
   autoConnectWebSocket: 0
-  isLocalServer: 0
-  gameName: roadcrosser
-  gameEndpoint: game/rock-paper-scissors-minus-one
-  baseUrl: http://localhost:3000/
-  gameId: 1104
-  _rockPaperScissorsManager: {fileID: 1736228497}
+  isLocalServer: 1
+  gameName: game/rock_paper_scissors_minus_one
 --- !u!114 &68334340
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2753,6 +2749,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e48daf761b3c4a79a82aa62805b91450, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerData: {}
   userBalanceText: {fileID: 607231307}
   currencyType: 0
   currencyImage: {fileID: 173016864}
