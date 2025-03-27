@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using DDD.Game;
 using DDD.Scripts.Core;
+using DDD.Scripts.Game.RockPaperScissors;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -11,12 +12,12 @@ namespace DDD.Scripts.Game.rock_paper_scissors.Network
 {
     public class DDDNetworkManagerRockPeper : DDDNetworkManager
     {
-        [SerializeField] private string betID = "game/coin_flip";
+        // Game endpoints and URLs
         [SerializeField] private string gameEndpoint = "game/rock-paper-scissors-minus-one";
-        [SerializeField] private string initEndpoint = "init";
-        [SerializeField] private string removeHandEndpoint = "remove-hand";
-        [SerializeField] private string mode => BetManager.instance.currencyType.ToString().ToLower();
-        
+        [SerializeField] private string baseUrl = "http://localhost:3000/";
+        [SerializeField] private int gameId = 1104;
+        [SerializeField] private DDDRockPaperScissorsManager _rockPaperScissorsManager;
+
         public override void InitializeSingleton()
         {
             if (Instance == null)
@@ -31,28 +32,65 @@ namespace DDD.Scripts.Game.rock_paper_scissors.Network
             }
         }
 
-    
-        public void CallInitRequest(string mode, Action<RPSMinusOneInitResponse> callback)
+        // Override the BuildUrl method to use the correct base URL
+        protected  string BuildUrl(string endpoint)
+        {
+            if (!isLocalServer)
+            {
+                baseUrl = serverUrl;
+            }
+            return $"{baseUrl}/{endpoint}";
+        }
+
+        // Initialize the game session
+        public void CallInitRequest(string mode, Action<string> callback)
         {
             StartCoroutine(InitRequestCoroutine(mode, callback));
         }
-        
-        private IEnumerator InitRequestCoroutine(string mode, Action<RPSMinusOneInitResponse> callback)
-        {
-            // Construct URL: e.g., {serverUrl}/game/rock-paper-scissors-minus-one/init
-            string endpoint = $"{gameEndpoint}/{initEndpoint}";
-            string url = BuildUrl(endpoint);
 
-            // Create request body
+        private IEnumerator InitRequestCoroutine(string mode, Action<string> callback)
+        {
+           // string endpoint = $"{gameEndpoint}/init?mode={mode}&gameId={gameId}";
+            //string url = BuildUrl(endpoint);
+
+           string endpoint = $"{gameEndpoint}/init?mode=&gameId=1104";
+           
+            string url = BuildUrl(endpoint);
+            url = $"{serverUrl}/game/rock-paper-scissors-minus-one/init?mode={mode}";
+
             RPSMinusOneInitRequest requestData = new RPSMinusOneInitRequest
             {
                 mode = mode
             };
 
             LogNetworkRequest("HTTP", url, requestData);
+            using (UnityWebRequest request = CreateGetRequest(url))
+            {
+                yield return request.SendWebRequest();
+                LogNetworkResponse("HTTP", request);
+
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    Debug.Log("[Network] Success");
+                    Debug.Log($"[Network] Request data: {JsonUtility.ToJson(request.downloadHandler.text)}");
+                    callback?.Invoke(request.downloadHandler.text);
+                }
+                else if (request.responseCode == 401)
+                {
+                    Debug.LogError($"[Network] Request failed: {request.error}");
+                }
+                else
+                {
+                    Debug.Log($"[Network] Request failed: {request.error}");
+                    Debug.Log($"[Network] Request failed: {request.downloadHandler.text}");
+                }
+            }
+            /*
 
             using (UnityWebRequest request = CreatePostRequest(url, JsonUtility.ToJson(requestData)))
             {
+                Debug.Log(request.GetRequestHeader("Content-Type"));
+                Debug.Log(request.GetRequestHeader("Authorization"));
                 yield return request.SendWebRequest();
                 LogNetworkResponse("HTTP", request);
 
@@ -60,6 +98,7 @@ namespace DDD.Scripts.Game.rock_paper_scissors.Network
                 {
                     try
                     {
+                        Debug.Log($"{request.downloadHandler.text}");
                         RPSMinusOneInitResponse response = JsonUtility.FromJson<RPSMinusOneInitResponse>(request.downloadHandler.text);
                         callback?.Invoke(response);
                     }
@@ -77,113 +116,231 @@ namespace DDD.Scripts.Game.rock_paper_scissors.Network
                 {
                     DDDDebug.LogError($"[Network] InitRequest error: {request.error}");
                 }
-            }
-        }
-        public void BetRequest(int speed, Action<string> callback)
-        {
-            Debug.Log($"[Network] Bet Request: {speed -1}");
-            StartCoroutine(BetRequestEnumerator(speed-1, callback));
+            }*/
         }
 
-        public IEnumerator BetRequestEnumerator(int speed, Action<string> callback)
+        // Place a bet
+        public void BetRequest(int amount, Action<string,Action> callback)
         {
-            string url = BuildUrl(betID);
-            Debug.Log(url);
-            var t = CreateBetRequestData(speed);
+            Debug.Log($"[Network] Bet Request: {amount}");
+            StartCoroutine(BetRequestEnumerator(amount, callback));
+        }
 
-            using (UnityWebRequest request = CreatePostRequest(url, JsonConvert.SerializeObject(t)))
+        public IEnumerator BetRequestEnumerator(int amount, Action<string,Action> callback)
+        {
+            string url = BuildUrl($"{gameEndpoint}/bet");
+            
+            var betRequestData = new RockPeperBetRequest
+            {
+                betAmount =  BetManager.instance.GetBetAmount(), 
+                sessionId = DDDRockPaperScissorsManager._sessionId,
+                gameId = gameId.ToString(),
+            };
+            
+            Debug.Log($"[Network] Bet Request: {url}");
+            Debug.Log($"[Network] Bet Request: {JsonConvert.SerializeObject(betRequestData)}");
+
+            using (UnityWebRequest request = CreatePostRequest(url, JsonConvert.SerializeObject(betRequestData)))
             {
                 yield return request.SendWebRequest();
                 LogNetworkResponse("Bet", request);
 
                 if (request.result == UnityWebRequest.Result.Success)
                 {
-                    callback?.Invoke(request.downloadHandler.text);
-                }
-                else if (request.responseCode == 401)
-                {
-                    Debug.LogError($"[Network] Request failed: {request.error}");
+                    Debug.Log($"[Network] Bet Success: {request.downloadHandler.text}");
+                    callback?.Invoke(request.downloadHandler.text,null);
                 }
                 else
                 {
-                    Debug.LogWarning($"[Network] Request failed: {request.error}");
+                    callback?.Invoke(request.downloadHandler.text,null);
+                    Debug.LogError($"[Network] Bet Request failed: {request.error}");
+                   
                 }
             }
         }
 
-        private RockPeperBetRequest CreateBetRequestData(int speed)
+        // Send first hand choice
+        public void FirstPick(DDDRockPaperScissorsManager.Choice choice, string sessionId,
+            Action<RPSFirestHanddResponse> callback)
         {
-            return new RockPeperBetRequest
-            {
-                betAmount = BetManager.instance.betAmount,
-                playerInitialHands = new List<string>(),
-                sessionId = "f3933089-74e3-40ca-bfb4-59b6f47c0f94"
-            };
+            StartCoroutine(FirstHandCoroutine(choice, sessionId, callback));
         }
-        
-        public void CallRemoveHandRequest(string playerHandToRemove, string sessionId, Action<RPSMinusOneRemoveHandResponse> callback)
-        {
-            StartCoroutine(RemoveHandCoroutine(playerHandToRemove, sessionId, callback));
-        }
-        
-        private IEnumerator RemoveHandCoroutine(string playerHandToRemove, string sessionId, Action<RPSMinusOneRemoveHandResponse> callback)
-        {
-            string endpoint = $"{gameEndpoint}/{removeHandEndpoint}";
-            string url = BuildUrl(endpoint);
 
-            RPSMinusOneRemoveHandRequest requestData = new RPSMinusOneRemoveHandRequest
+        private IEnumerator FirstHandCoroutine(DDDRockPaperScissorsManager.Choice choice, string sessionId, 
+            Action<RPSFirestHanddResponse> callback)
+        {
+            string url = BuildUrl($"{gameEndpoint}/firstHand");
+            
+            RPSFirestHandRequest requestData = new RPSFirestHandRequest
             {
-                playerHandToRemove = playerHandToRemove,
-                sessionId = sessionId
+                gameId = gameId,
+                sessionId = sessionId,
+                playerHand = choice.ToString().ToLower()
             };
 
-            LogNetworkRequest("HTTP", url, requestData);
+            Debug.Log($"[Network] First Hand Request: {JsonConvert.SerializeObject(requestData)}");
 
-            using (UnityWebRequest request = CreatePostRequest(url, JsonUtility.ToJson(requestData)))
+            using (UnityWebRequest request = CreatePostRequest(url, JsonConvert.SerializeObject(requestData)))
             {
                 yield return request.SendWebRequest();
-                LogNetworkResponse("HTTP", request);
+                LogNetworkResponse("FirstHand", request);
 
                 if (request.result == UnityWebRequest.Result.Success)
                 {
                     try
                     {
-                        RPSMinusOneRemoveHandResponse response = JsonUtility.FromJson<RPSMinusOneRemoveHandResponse>(request.downloadHandler.text);
+                        Debug.Log($"[Network] First Hand Response: {request.downloadHandler.text}");
+                        RPSFirestHanddResponse response = 
+                            JsonConvert.DeserializeObject<RPSFirestHanddResponse>(request.downloadHandler.text);
                         callback?.Invoke(response);
                     }
                     catch (Exception e)
                     {
-                        DDDDebug.LogException($"[Network] RemoveHand parse error: {e.Message}");
+                        Debug.LogException(e);
                         callback?.Invoke(null);
                     }
                 }
-                else if (request.responseCode == 401)
+                else
                 {
-                    DDDDebug.LogError($"[Network] RemoveHand unauthorized: {request.error}");
+                    Debug.LogError($"[Network] First Hand Request failed: {request.error}");
+                    callback?.Invoke(null);
+                }
+            }
+        }
+
+        // Send second hand choice
+        public void SecondPick(DDDRockPaperScissorsManager.Choice choice, string sessionId,
+            Action<RPSFirestHanddResponse> callback)
+        {
+            StartCoroutine(SecondHandCoroutine(choice, sessionId, callback));
+        }
+
+        private IEnumerator SecondHandCoroutine(DDDRockPaperScissorsManager.Choice choice, string sessionId, 
+            Action<RPSFirestHanddResponse> callback)
+        {
+            string url = BuildUrl($"{gameEndpoint}/secondHand");
+            
+            RPSFirestHandRequest requestData = new RPSFirestHandRequest
+            {
+                gameId = gameId,
+                sessionId = sessionId,
+                playerHand = choice.ToString().ToLower()
+            };
+
+            Debug.Log($"[Network] Second Hand Request: {JsonConvert.SerializeObject(requestData)}");
+
+            using (UnityWebRequest request = CreatePostRequest(url, JsonConvert.SerializeObject(requestData)))
+            {
+                yield return request.SendWebRequest();
+                LogNetworkResponse("SecondHand", request);
+
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    try
+                    {
+                        Debug.Log($"[Network] Second Hand Response: {request.downloadHandler.text}");
+                        RPSFirestHanddResponse response = 
+                            JsonConvert.DeserializeObject<RPSFirestHanddResponse>(request.downloadHandler.text);
+                        callback?.Invoke(response);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                        callback?.Invoke(null);
+                    }
                 }
                 else
                 {
-                    DDDDebug.LogError($"[Network] RemoveHand error: {request.error}");
+                    Debug.LogError($"[Network] Second Hand Request failed: {request.error}");
+                    callback?.Invoke(null);
+                }
+            }
+        }
+
+        // Remove a hand
+        public void CallRemoveHandRequest(string[] playerHands, string playerHandToRemove, string sessionId,
+            Action<RPSMinusOneRemoveHandResponse> callback)
+        {
+            StartCoroutine(RemoveHandCoroutine(playerHandToRemove, sessionId, callback));
+        }
+
+        private IEnumerator RemoveHandCoroutine(string playerHandToRemove, string sessionId,
+            Action<RPSMinusOneRemoveHandResponse> callback)
+        {
+            string url = BuildUrl($"{gameEndpoint}/remove-hand");
+
+            RPSMinusOneRemoveHandRequest requestData = new RPSMinusOneRemoveHandRequest
+            {
+                playerHandToRemove = playerHandToRemove.ToLower(),
+                sessionId = sessionId,
+                gameId = gameId
+            };
+
+            Debug.Log($"[Network] Remove Hand Request: {JsonConvert.SerializeObject(requestData)}");
+
+            using (UnityWebRequest request = CreatePostRequest(url, JsonConvert.SerializeObject(requestData)))
+            {
+                yield return request.SendWebRequest();
+                LogNetworkResponse("RemoveHand", request);
+
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    try
+                    {
+                        Debug.Log($"[Network] Remove Hand Response: {request.downloadHandler.text}");
+                        RPSMinusOneRemoveHandResponse response =
+                            JsonConvert.DeserializeObject<RPSMinusOneRemoveHandResponse>(request.downloadHandler.text);
+                        callback?.Invoke(response);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                        callback?.Invoke(null);
+                    }
+                }
+                else
+                {
+                    Debug.LogError($"[Network] Remove Hand Request failed: {request.error}");
                     callback?.Invoke(null);
                 }
             }
         }
     }
-    
-    
+
     [Serializable]
     public class RPSMinusOneInitRequest
     {
-       
         public string mode;
+        public string gameId;
+    }
+
+    [Serializable]
+    public class RockPeperBetRequest
+    {
+        public int betAmount;
+        public string sessionId;
+        public string gameId;
+    }
+
+    [Serializable]
+    public class RPSBetRespone
+    {
+        public bool success;
+        public object data;
     }
 
     [Serializable]
     public class RPSMinusOneInitResponse
     {
-       
         public int[] betsValues;
         public string sessionId;
+    }
+
+    [Serializable]
+    public class RPSMinusOneInitResponseInit
+    {
+        public RPSMinusOneInitResponse data;
+        public bool success;
     }
 
     [Serializable]
@@ -191,16 +348,41 @@ namespace DDD.Scripts.Game.rock_paper_scissors.Network
     {
         public string playerHandToRemove;
         public string sessionId;
+        public int gameId;
+    }
+
+    [Serializable]
+    public class RPSFirestHandRequest
+    {
+        public int gameId;
+        public string sessionId;
+        public string playerHand;
+    }
+
+    [Serializable]
+    public class RPSFirestHanddResponse
+    {
+        public bool success;
+        public RPSFirestHanddResponseData data;
+    }
+
+    [Serializable]
+    public class RPSFirestHanddResponseData
+    {
+        public string pcHand;
+    }
+
+    [Serializable]
+    public class RPSMinusOneRemoveHandResponseData
+    {
+        public string pcHandToRemove;
+        public float winAmount;
     }
 
     [Serializable]
     public class RPSMinusOneRemoveHandResponse
     {
-       
-        public string pcHandToRemove;
-        public float winAmount;
+        public RPSMinusOneRemoveHandResponseData data;
+        public bool success;
     }
 }
-    
-
-

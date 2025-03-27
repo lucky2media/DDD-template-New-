@@ -1,10 +1,12 @@
 using System;
 using System.Collections;
 using DDD.Scripts.Core;
+using DDD.Scripts.Lobby;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using DDD.Game; // Add reference to BetManager namespace
 
 namespace DDD.Scripts.Game.Component
 {
@@ -18,15 +20,12 @@ namespace DDD.Scripts.Game.Component
         [SerializeField] private TextMeshProUGUI countText;
     
         [Header("Settings")]
-        [SerializeField] private int startingValue = 0;
-        [SerializeField] private int minValue = int.MinValue;
-        [SerializeField] private int maxValue = int.MaxValue;
-        [SerializeField] private int incrementAmount = 1;
+        [SerializeField] private int startingIndex = 0;
     
         [Header("Events")]
         public Action<int> onValueChanged;
     
-        private int currentValue;
+        private int currentIndex;
     
         [Header(("onPush"))]
         private bool isHolding = false;
@@ -34,7 +33,7 @@ namespace DDD.Scripts.Game.Component
 
         private void Awake()
         {
-            currentValue = startingValue;
+            currentIndex = startingIndex;
     
             incrementButton.triggers.Clear();
             decrementButton.triggers.Clear();
@@ -64,7 +63,7 @@ namespace DDD.Scripts.Game.Component
             UpdateDisplay();
         }
 
-        public EventTrigger.Entry SetEntry(Action callback,EventTriggerType triggerType)
+        public EventTrigger.Entry SetEntry(Action callback, EventTriggerType triggerType)
         {
             EventTrigger.Entry entry = new EventTrigger.Entry();
             entry.eventID = triggerType;
@@ -75,45 +74,66 @@ namespace DDD.Scripts.Game.Component
             return entry;
         }
         
-    
         public void Increment()
         {
-            if (currentValue + incrementAmount <= maxValue)
+            if (BetManager.instance != null && currentIndex + 1 < BetManager.instance.betAmounts.Length)
             {
-                currentValue += incrementAmount;
+                currentIndex++;
                 UpdateDisplay();
-                Manager.EventsManager.InvokeEvent(DDDEventNames.OnValueChanged,GetCurrentValue());
+                Manager.EventsManager.InvokeEvent(DDDEventNames.OnValueChanged, currentIndex);
             }
         }
     
         public void Decrement()
         {
-            if (currentValue - incrementAmount >= minValue)
+            if (BetManager.instance != null && currentIndex - 1 >= 0)
             {
-                currentValue -= incrementAmount;
+                currentIndex--;
                 UpdateDisplay();
-                Manager.EventsManager.InvokeEvent(DDDEventNames.OnValueChanged,GetCurrentValue());
+                Manager.EventsManager.InvokeEvent(DDDEventNames.OnValueChanged, currentIndex);
             }
         }
     
         private void UpdateDisplay()
         {
-            if (countText != null)
+            
+            if (countText != null && BetManager.instance != null)
             {
-                countText.text = currentValue.ToString();
+                var c = BetManager.instance.betAmounts[currentIndex];
+                if (BetManager.instance.currencyType == Mode.coins)
+                {
+                    
+                }
+                else
+                {
+                   c = c.SweepsFormat();
+                }
+                countText.text = c.ToString();
             }
         }
     
-        public int GetCurrentValue()
+        public int GetCurrentIndex()
         {
-            return currentValue;
+            return currentIndex;
+        }
+        
+        public int GetCurrentBetAmount()
+        {
+            if (BetManager.instance != null)
+            {
+                return BetManager.instance.betAmounts[currentIndex];
+            }
+            return 0;
         }
     
-        public void SetValue(int newValue)
+        public void SetIndex(int newIndex)
         {
-            currentValue = Mathf.Clamp(newValue, minValue, maxValue);
-            UpdateDisplay();
-            onValueChanged?.Invoke(currentValue);
+            if (BetManager.instance != null)
+            {
+                currentIndex = Mathf.Clamp(newIndex, 0, BetManager.instance.betAmounts.Length - 1);
+                UpdateDisplay();
+                onValueChanged?.Invoke(currentIndex);
+            }
         }
         
         private IEnumerator HoldAction(Action action)
@@ -121,6 +141,7 @@ namespace DDD.Scripts.Game.Component
             while (isHolding)
             {
                 action.Invoke();
+                DDDAudioManager.instance.PlayButtonPressSound();
                 yield return new WaitForSeconds(holdDelay);
             }
         }

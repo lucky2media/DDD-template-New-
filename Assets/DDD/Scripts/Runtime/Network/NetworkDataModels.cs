@@ -170,7 +170,7 @@ public class Balance
     public int BSweeps { get; set; }
 
     [JsonProperty("sweeps")]
-    public int Sweeps { get; set; }
+    public float Sweeps { get; set; }
 
     [JsonProperty("frozenRSweeps")]
     public int FrozenRSweeps { get; set; }

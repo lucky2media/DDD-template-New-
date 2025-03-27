@@ -9,6 +9,7 @@ public class PlayerData
     public ResponseWrapper userDTO;
     public PlayerData (DDDNetworkManager dddNetworkManager,Action onConnected)
     {
+        
         _dddNetworkManager = dddNetworkManager;
         FetchUserData(() =>
         {

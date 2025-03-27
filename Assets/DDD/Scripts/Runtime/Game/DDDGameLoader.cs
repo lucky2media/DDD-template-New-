@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using DDD.Game;
 using DDD.Scripts.Core;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+[DefaultExecutionOrder(-999999)]
 public class DDDGameLoader : MonoBehaviour
 {
     public GameObject errorScreen;
@@ -33,6 +35,11 @@ public class DDDGameLoader : MonoBehaviour
         } ),networkManager);
     }
 
+    [ContextMenu("Show debuger")]
+    public void ShowDebugers()
+    {
+        SRDebug.Instance.ShowDebugPanel();
+    }
     private void ShowGames()
     {
         lobbyScreen.Init();

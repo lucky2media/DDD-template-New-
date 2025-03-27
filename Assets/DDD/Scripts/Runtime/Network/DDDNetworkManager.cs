@@ -22,7 +22,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
     #region Serialized Fields
 
     [Header("Server Configuration")] [SerializeField]
-    protected string serverUrl = "https://backend-staging.dingdingding.world";
+    public string serverUrl = "https://backend-staging.dingdingding.world";
 
     [SerializeField] private string wsGameUri = "piggytap";
     [SerializeField] private string wsLiveUri = "wss://ws.dingdingding.world";
@@ -70,6 +70,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
             }
             else
             {
+                Debug.Log($"Got cookie value for {token}");
                 accessToken = token;
             }
         });
@@ -128,8 +129,10 @@ public class DDDNetworkManager : DDDMonoBehaviour
 
     protected string BuildUrl(string endpoint)
     {
+      
         return isLocalServer ? $"{wsLocalUri}/{endpoint}" : $"{serverUrl}/{endpoint}";
     }
+
 
     protected UnityWebRequest CreateGetRequest(string url)
     {
@@ -153,6 +156,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
         request.SetRequestHeader("accept", "application/json");
         request.SetRequestHeader("Content-Type", "application/json");
         request.SetRequestHeader("Authorization", accessToken);
+      
     }
 
     #endregion
@@ -318,6 +322,7 @@ public class DDDNetworkManager : DDDMonoBehaviour
         try
         {
             var response = JsonConvert.DeserializeObject<ResponseWrapper>(request.downloadHandler.text);
+            Manager.playerData.userDTO = response;
             callback?.Invoke(response);
         }
         catch (Exception e){

@@ -1,4 +1,5 @@
 using System.Collections;
+using DDD.Game;
 using DDD.Scripts.Core;
 using TMPro;
 using UnityEngine;
@@ -32,6 +33,10 @@ namespace DDD.Scripts.Game.Component
         private IEnumerator Start()
         {
             yield return new WaitForSeconds(1);
+            if (Manager.NetworkManager == null)
+            {
+                Debug.LogError($"{nameof(Manager)} is null");
+            }
             Manager.playerData = new PlayerData(Manager.NetworkManager,()=>
             {
                 UpdateUI(null);
@@ -39,6 +44,7 @@ namespace DDD.Scripts.Game.Component
             iconButton.onClick.RemoveAllListeners();
             iconButton.onClick.AddListener((() => { ChangeCurrency(); }));
             Manager.EventsManager.AddListener(DDDEventNames.OnUserBalanceChanged,UpdateUI);
+            Manager.EventsManager.AddListener(DDDEventNames.OnValueChanged,UpdateUI);
         }
 
 
@@ -55,7 +61,7 @@ namespace DDD.Scripts.Game.Component
                         currencyImage.sprite = coinsSprite;
                         break;
                     case Mode.sweeps:
-                        t = balance.Sweeps.ToString();
+                        t = balance.Sweeps.SweepsFormat().ToString();
                         currencyImage.sprite = sweepsSprite;
                         break;
                 }
